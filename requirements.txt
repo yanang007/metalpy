@@ -16,3 +16,5 @@ scikit-learn
 # optional
 # bokeh
 # pyvista
+properties
+colour
