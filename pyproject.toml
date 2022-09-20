@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=63.0"]
+build-backend = "META.setuptools_backend"
+backend-path = ["buildtools"]
+
+[project]
+name = "meta-python"
+version = "0.0.1"
+authors = [
+    { name="yanang007", email="yanang007@gmail.com" },
+]
+description = "An essential tools assembly for SimPEG and other workflow in META Lab."
+requires-python = ">=3.9"
+license="MIT"
+classifiers = [
+   "Programming Language :: Python :: 3",
+   "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+include = ["META*"]

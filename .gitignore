@@ -8,3 +8,10 @@
 *.png
 *.vtr
 *.log
+
+# Dist files
+dist/*
+build/*
+*.egg-info/*
+
+
