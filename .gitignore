@@ -1,13 +1,9 @@
-models/*
-modeling/*
-output/*
-stdpts/*
+**/models/*
+**/modeling/*
+**/output/*
+**/stdpts/*
 .idea/*
-*/__pycache__/*
-
-*/models/*
-*/modeling/*
-*/output/*
+**/__pycache__/*
 
 *.png
 *.vtr
