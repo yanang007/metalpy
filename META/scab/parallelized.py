@@ -70,7 +70,7 @@ class ParallelizedSimulation(LazyClassFactory):
 
         for receiver in receiver_list:
             receiver_locations.append(receiver.locations)
-            receiver.locations = receiver.locations[0]
+            receiver.locations = receiver.locations[0]  # 占位符，用来越过receiver的类型检测
 
         self.simulation_class = simulation_class
         self.survey = survey
