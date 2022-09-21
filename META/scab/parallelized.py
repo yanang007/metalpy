@@ -80,13 +80,16 @@ class ParallelizedSimulation(LazyClassFactory):
 
         self.executor = executor
 
+        self.show_progress = False
+
     @staticmethod
     def worker(simulation_delegate,
                survey_delegate,
                source_field_delegate,
                receiver_list_container,
                locations_list,
-               _model):
+               _model,
+               show_progress):
         for receiver in receiver_list_container:
             receiver.locations = locations_list.pop(0)
 
@@ -94,13 +97,27 @@ class ParallelizedSimulation(LazyClassFactory):
             source_field=source_field_delegate.construct(
                 receiver_list=receiver_list_container
             ))
+
         simulation = simulation_delegate.construct(survey=survey)
+
+        if show_progress:
+            from . import progressed
+            simulation.progress_on()
+
         return simulation.dpred(_model)
 
     def dpred(self, model):
         futures = []
         receiver_tasks = self.executor.arrange(*self.locations_list)
         for dest_worker in self.executor.get_workers():
+            show_progress = self.show_progress
+            if show_progress:
+                worker_id = dest_worker.get_in_group_id()
+                if worker_id is None:
+                    self.show_progress = False
+                else:
+                    show_progress = worker_id == 0
+
             future = self.executor.submit(
                 self.worker, worker=dest_worker,
                 simulation_delegate=self.clone(),  # 使用clone创建一个lazy构造器
@@ -108,13 +125,17 @@ class ParallelizedSimulation(LazyClassFactory):
                 source_field_delegate=self.source_field,
                 receiver_list_container=self.receiver_list,
                 locations_list=receiver_tasks.assign(dest_worker),
-                _model=model
+                _model=model,
+                show_progress=show_progress
             )
             futures.append(future)
 
         ret = self.executor.gather(futures)
         ret = np.concatenate(ret)
         return ret
+
+    def progress_on(self):
+        self.show_progress = True
 
 
 @extends(BaseSimulation, 'parallel')
