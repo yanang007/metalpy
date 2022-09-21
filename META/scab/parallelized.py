@@ -35,7 +35,7 @@ class ParallelizedSimulation(LazyClassFactory):
         """
 
         wrong_usage_error_msg = '''Parallelized simulation takes specially constructed BaseSurvey and BaseSrc.
-    Wrong behavior:
+    Bad:
         source_field = SourceField(receiver_list=receiver_list, parameters=H)
         survey = Survey(source_field)
         simulation = Simulation3DIntegral.parallel(
@@ -43,7 +43,7 @@ class ParallelizedSimulation(LazyClassFactory):
             // ...
         )
         
-    Right behavior:
+    Expected:
         source_field = SourceField.parallel(receiver_list=receiver_list, parameters=H)
         survey = Survey.parallel(source_field)
         simulation = Simulation3DIntegral.parallel(
