@@ -1,7 +1,7 @@
 import numpy as np
 
 from . import Shape3D
-from META.utils.misc import plot_opaque_cube
+from metalpy.utils.misc import plot_opaque_cube
 
 
 def is_inside_cuboid(mesh, corner, lengths):

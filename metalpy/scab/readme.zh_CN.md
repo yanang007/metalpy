@@ -1,26 +1,25 @@
 SimPEG Commons and Boosters
 ===========================
 
-**SimPEG Commons and Boosters** (**SCAB**), also known as **Super Cat's Armageddon with Bugs**, is a collection of common tools for SimPEG.
-SCAB provides basic utilities and extensions for SimPEG, including: parallelization, demagnitization support and more. 
+**SimPEG Commons and Boosters** (**SCAB**)，你也可以叫它**Super Cat's Armageddon with Bugs**（**超级猫猫与Bug的终焉之战**）。
+SCAB是关于SimPEG的通用工具包，提供许多针对SimPEG的实用功能与扩展，包括: 自动并行化，退磁支持以及其他常用功能。 
 
-SCAB was previously named **SimPEG Common Auto Batching**, which is now a specific module for parallelization in SCAB.
+SCAB原名**SimPEG Common Auto Batching**，其现在已经成为了SCAB的自动并行化模块。
 
-Installation
+安装
 ------------
-SCAB is now a submodule in META-python, which can be installed using pip:
+SCAB目前是metalpy的一个子模块，你可以使用pip安装它：
 
-    pip install meta-python
+    pip install metalpy
 
-
-Usage
+用法
 -----
-### Auto parallelization
+### 自动并行化
 
-Run your SimPEG simulations in parallel with only few changes.
+只需要修改几行代码，就可以让你的SimPEG仿真在并行模式下运行。
 
-The basic idea is to divide the receivers of simulation into batches, and each batch is run on a computing unit.
-The batches are run in parallel, and the results will be merged back to be same as the serial version.
+基本原理是将接收器分成多个批次，每个批次在一个计算单元上运行。
+批次并行运行，最后将结果合并返回。
 
 <table>
   <tr>
@@ -55,8 +54,8 @@ simulation = simulation.Simulation3DIntegral(
     <td><pre lang="python">
 import ...
 import ...
-**_from META.scab import parallelized_**
-**_from META.mepa import Executor_**
+**_from metalpy.scab import parallelized_**
+**_from metalpy.mepa import Executor_**
 
 receiver_list = Point(
     receiver_points, 

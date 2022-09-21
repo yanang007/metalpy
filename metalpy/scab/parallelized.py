@@ -3,7 +3,7 @@ from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
 from SimPEG.survey import BaseSurvey, BaseSrc
 
-from META.mepa import Executor
+from metalpy.mepa import Executor
 from .injectors import extends
 from .lazy_class_delegate import LazyClassFactory
 

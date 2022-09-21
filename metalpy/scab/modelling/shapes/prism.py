@@ -1,6 +1,6 @@
 import numpy as np
 
-from META.scab.modelling.shapes.cuboid import is_inside_cuboid
+from metalpy.scab.modelling.shapes.cuboid import is_inside_cuboid
 from . import Shape3D
 from scipy.stats import linregress
 

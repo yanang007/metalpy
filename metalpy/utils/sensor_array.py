@@ -9,7 +9,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation as R
 
-from META.utils.misc import sin2pi, cos2pi, plot_opaque_cube, plot_linear_cube
+from metalpy.utils.misc import sin2pi, cos2pi, plot_opaque_cube, plot_linear_cube
 
 from colour import Color
 

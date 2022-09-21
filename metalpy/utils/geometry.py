@@ -1,6 +1,6 @@
 import numpy as np
 
-from META.utils.rand import check_random_state
+from metalpy.utils.rand import check_random_state
 
 
 def extract_vec(pool, random_state):

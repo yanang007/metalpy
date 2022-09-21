@@ -1,12 +1,12 @@
-META Essential Tools Assembly (Python)
+METAL Essential Tools and Libraries (Python)
 ===========================
 
-**META Essential Tools Assembly (Python)** (**META-Python**),
-is a collection of common python tools for SimPEG and other workflow in META Lab,
-providing a general-purposed parallelization framework MEPA and [SimPEG extensions](META/scab/readme.md).
+**METAL Essential Tools and Libraries (Python)** (**metalpy**),
+is a collection of common python tools and libraries for SimPEG and other workflow in META Lab,
+including a general-purposed parallelization framework MEPA and [SimPEG extensions](metalpy/scab/readme.md).
 
 Installation
 ------------
-META-python can be installed using pip:
+Metalpy can be installed using pip:
 
-    pip install meta-python
+    pip install metalpy
