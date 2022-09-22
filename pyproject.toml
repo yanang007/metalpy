@@ -17,8 +17,8 @@ classifiers = [
 ]
 dependencies = [
     "distributed",
-    "SimPEG",
-    "discretize",
+    #"SimPEG",
+    #"discretize",
     "tqdm",
     "numpy",
     "pandas",
@@ -26,7 +26,7 @@ dependencies = [
     "scikit-learn",
     "matplotlib",
     "psutil",
-    "pywin32",
+    #"pywin32",
     "properties",
     "colour",
 ]
