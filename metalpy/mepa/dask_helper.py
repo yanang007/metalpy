@@ -83,8 +83,14 @@ def configure_dask_client(client, extra_paths=None, excludes=None):
 
         async def setup(self, worker=None):
             target = worker
+            base_dir = os.path.abspath(os.path.join(target.local_directory, '../..'))
+            if 'dask-worker-space' not in base_dir:
+                # 同上，如果nanny的工作路径不在dask-worker-space下，那么worker的工作路径似乎也不会在dask-worker-space下
+                base_dir = os.path.join(base_dir, 'dask-worker-space')
 
-            path_to_scripts = os.path.join(os.path.abspath(os.path.join(target.local_directory, '../..')), "scripts")
+            path_to_scripts = os.path.join(base_dir, "scripts")
+
+            print(path_to_scripts)
 
             importlib.invalidate_caches()
             sys.path.insert(0, path_to_scripts)
@@ -111,7 +117,7 @@ def configure_dask_client(client, extra_paths=None, excludes=None):
         current_dir = os.path.split(current_dir)[0]
 
     paths.append(current_dir)
-    paths.append(os.path.abspath('/'))
+    paths.append(os.path.abspath('./'))
 
     # 将脚本文件上传到服务器
     modules = list(sys.modules.items())
@@ -152,5 +158,8 @@ def configure_dask_client(client, extra_paths=None, excludes=None):
         plugin.add(name, file_path)
 
     plugin.compact()
-    client.register_worker_plugin(plugin, nanny=True)
-    client.register_worker_plugin(plugin.get_reloader())
+
+    client.register_worker_plugin(plugin, nanny=True, name='UploadUserModules')
+    client.register_worker_plugin(plugin.get_reloader(), name='ReloadUserModules')
+    client.unregister_worker_plugin(name='ReloadUserModules')
+    client.unregister_worker_plugin(nanny=True, name='UploadUserModules')
