@@ -10,7 +10,7 @@ authors = [
     { name="yanang007", email="yanang007@gmail.com" },
 ]
 description = "Essential tools and libraries for SimPEG and other workflow in META Lab."
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 classifiers = [
    "Programming Language :: Python :: 3",
    "Operating System :: OS Independent",
