@@ -5,7 +5,7 @@ backend-path = ["buildtools"]
 
 [project]
 name = "metalpy"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     { name="yanang007", email="yanang007@gmail.com" },
 ]
