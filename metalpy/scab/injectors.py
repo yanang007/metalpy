@@ -12,6 +12,19 @@ class extends:
         return func
 
 
+class replaces:
+    def __init__(self, cls, name):
+        self.cls = cls
+        self.name = name
+
+    def __call__(self, func):
+        orig = getattr(self.cls, self.name)
+        wrapper = lambda *args, **kwargs: func(*args, **kwargs, orig_fn=orig)
+        cmd = f'self.cls.{self.name} = wrapper'
+        exec(cmd)
+        return wrapper
+
+
 class before:
     def __init__(self, cls, name):
         self.cls = cls
