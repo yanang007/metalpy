@@ -1,30 +1,54 @@
 import os
 
-import SimPEG.potential_fields.magnetics
 import numpy as np
 import torch
+import SimPEG.potential_fields.magnetics
 
-from metalpy.scab.injectors import replaces
+import psutil
 
-from memory_profiler import profile
-
+from metalpy.scab.injectors import replaces, extends
+import metalpy.scab.progressed
+from metalpy.scab.utils.patch import use_patch
 from metalpy.scab.utils.sparse import scipy2torch
 
+use_patch(metalpy.scab.progressed)
 
-@replaces(SimPEG.potential_fields.magnetics.Simulation3DIntegral, 'linear_operator')
+PROFILE_MEMORY = False
+
+
+@extends(SimPEG.potential_fields.magnetics.Simulation3DIntegral, 'torch_on_impl')
+def __magnetics_Simulation3DIntegral_ext_torch_on_impl(self):
+    """
+    由__BaseSimulation_ext_progress_on调用
+    """
+    replaces(self, 'linear_operator')(__magnetics_Simulation3DIntegral_ext_linear_operator)
+
+    if PROFILE_MEMORY:
+        global __magnetics_Simulation3DIntegral_ext_evaluate_integral
+        from memory_profiler import profile
+        __magnetics_Simulation3DIntegral_ext_evaluate_integral = profile(__magnetics_Simulation3DIntegral_ext_evaluate_integral)
+
+    replaces(self, 'evaluate_integral')(__magnetics_Simulation3DIntegral_ext_evaluate_integral)
+
+
+
 def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
     if not hasattr(self, 'torch_device'):
         return orig_fn(self)
 
     def create_tensor(x, dtype=None):
-        return torch.tensor(x, dtype=dtype, device=self.torch_device)
+        # return torch.tensor(x, dtype=dtype, device=self.torch_device)
+        if dtype is None:
+            return torch.from_numpy(x).to(self.torch_device)
+        else:
+            return torch.as_tensor(x, dtype=dtype, device=self.torch_device)
+
     # infos = [torch.cuda.get_device_properties(i) for i in range(ng)]
     # 获取显存大小来实施计算分块
 
-    receivers = create_tensor(self.survey.receiver_locations)
-    self.nC = self.modelMap.shape[0]
-    active_components = {k: create_tensor(v) for k, v in self.survey.components.items()}
-    nD = self.survey.nD
+    self.nC = self.modelMap.shape[0]  # 网格数
+    nD = self.survey.nD  # 数据量，观测点数 * 目标量数
+    nObs = self.survey.receiver_locations.shape[0]  # 观测点数
 
     if self.store_sensitivities == "disk":
         sens_name = self.sensitivity_path + "sensitivity.npy"
@@ -36,10 +60,31 @@ def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
                 kernel = np.asarray(kernel)
                 return kernel
     # Single threaded
-    if self.store_sensitivities != "forward_only":
-        kernel = self.evaluate_integral(receivers, active_components)
-    else:
-        kernel = self.evaluate_integral(receivers, active_components).dot(self.model)
+    mem = psutil.virtual_memory().free
+    chunk_size = 10
+    n_chunks = int(np.ceil(nObs / chunk_size))
+
+    receiver_lists = np.array_split(self.survey.receiver_locations, n_chunks)
+    active_components = {
+        k: np.array_split(v, n_chunks) for k, v in self.survey.components.items()
+    }
+
+    kernels = []
+    for i, receivers in enumerate(receiver_lists):
+        components = {k: v[i] for k, v in active_components.items()}
+        kernel = self.evaluate_integral(create_tensor(receivers),
+                                        {k: create_tensor(v) for k, v in
+                                        components.items()}, )
+        kernels.append(kernel)
+
+        self.update_progress(len(receivers))
+
+    kernel = torch.vstack(kernels)
+    model = create_tensor(self.model)
+
+    if self.store_sensitivities == "forward_only":
+        kernel = torch.einsum('og,g->o', kernel, model)
+
     if self.store_sensitivities == "disk":
         print(f"writing sensitivity to {sens_name}")
         os.makedirs(self.sensitivity_path, exist_ok=True)
@@ -47,9 +92,7 @@ def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
     return kernel
 
 
-@replaces(SimPEG.potential_fields.magnetics.Simulation3DIntegral, 'evaluate_integral')
-# @profile
-def evaluate_integral(self, receiver_location, components, orig_fn=None):
+def __magnetics_Simulation3DIntegral_ext_evaluate_integral(self, receiver_location, components, orig_fn=None):
     """
     Load in the active nodes of a tensor mesh and computes the magnetic
     forward relation between a cuboid and a given observation
@@ -71,19 +114,20 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
     def create_tensor(x, dtype=None):
         return torch.tensor(x, dtype=dtype, device=self.torch_device)
 
+    def create_zeros(shape, dtype=None):
+        return torch.zeros(shape, dtype=torch.float64 if dtype is None else dtype, device=self.torch_device)
+
     # TODO: This should probably be converted to C
     tol1 = 1e-10  # Tolerance 1 for numerical stability over nodes and edges
     tol2 = 1e-4  # Tolerance 2 for numerical stability over nodes and edges
 
-    receiver_location = receiver_location[:10]
-    receiver_location.requires_grad = True
+    receiver_location.requires_grad = False
     # number of cells in mesh
     nC = self.Xn.shape[0]
     batch_size = receiver_location.shape[0]
 
-    rows = {component: torch.zeros(3 * nC, mask.sum(), device=self.torch_device)
-            for component, mask in
-            components.items()}
+    # TODO: 用component mask控制具体点上要计算的分量
+    rows = {}
 
     # base cell dimensions
     min_hx, min_hy, min_hz = (
@@ -100,11 +144,24 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
     #
     # d2 = boundaries[:, ::2]
 
-    M = scipy2torch(self.M, device=self.torch_device)
+    # self.M是CSR，转置后变成CSC
+    # 使用torch的CSR/CSC格式存在以下问题
+    # 1. CSR计算结果有问题（核心问题）
+    # 2. CSR只能左乘（不过COO也只能左乘）
+    # 3. CSR的操作无法求导
+    # TODO: 但是CSR理论计算效率高于COO，如果能解决上述问题，那么这里可以考虑不用转换为COO
+    M = scipy2torch(self.M.T, device=self.torch_device).to_sparse_coo()
+
+    def mul_by_m(vd, key):
+        # truth = torch.as_tensor(vd[key].detach().numpy() * self.M)
+        mult = M @ vd[key].T
+        mult = mult.T
+        vd[key] = mult
 
     Zn = create_tensor(self.Zn)
     Zs = receiver_location[:, 2][:, None, None].expand(-1, nC, -1)
     dz = Zn - Zs
+    del Zn, Zs
     dz[torch.abs(dz) < tol2 * min_hz] = tol2 * min_hz
     dzdz = dz ** 2
     dz1, dz2 = dz[:, :, 0], dz[:, :, 1]
@@ -113,6 +170,7 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
     Yn = create_tensor(self.Yn)
     Ys = receiver_location[:, 1][:, None, None].expand(-1, nC, -1)
     dy = Yn - Ys
+    del Yn, Ys
     dy[torch.abs(dy) < tol2 * min_hy] = tol2 * min_hy
     dydy = dy ** 2
     dy1, dy2 = dy[:, :, 0], dy[:, :, 1]
@@ -121,6 +179,7 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
     Xn = create_tensor(self.Xn)
     Xs = receiver_location[:, 0][:, None, None].expand(-1, nC, -1)
     dx = Xn - Xs
+    del Xn, Xs
     dx[torch.abs(dx) < tol2 * min_hx] = tol2 * min_hx
     dxdx = dx ** 2
     dx1, dx2 = dx[:, :, 0], dx[:, :, 1]
@@ -200,7 +259,7 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
     arg40 = dz1 + r8
 
     if ("bxx" in components) or ("bzz" in components):
-        rows["bxx"] = torch.zeros((batch_size, 3 * nC))
+        rows["bxx"] = create_zeros((batch_size, 3 * nC))
 
         rows["bxx"][:, 0:nC] = 2 * (
                 ((dx1 ** 2 - r1 * arg1) / (r1 * arg1 ** 2 + dx1 ** 2 * r1))
@@ -236,10 +295,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["bxx"] /= 4 * torch.pi
-        rows["bxx"] *= M
+        mul_by_m(rows, "bxx")
 
     if ("byy" in components) or ("bzz" in components):
-        rows["byy"] = torch.zeros((batch_size, 3 * nC))
+        rows["byy"] = create_zeros((batch_size, 3 * nC))
 
         rows["byy"][:, 0:nC] = (
                 dy2 / (r3 * arg15)
@@ -273,13 +332,13 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["byy"] /= 4 * torch.pi
-        rows["byy"] *= M
+        mul_by_m(rows, "byy")
 
     if "bzz" in components:
         rows["bzz"] = -rows["bxx"] - rows["byy"]
 
     if "bxy" in components:
-        rows["bxy"] = torch.zeros((batch_size, 3 * nC))
+        rows["bxy"] = create_zeros((batch_size, 3 * nC))
 
         rows["bxy"][:, 0:nC] = 2 * (
                 ((dx1 * arg4) / (r1 * arg1 ** 2 + (dx1 ** 2) * r1))
@@ -306,11 +365,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["bxy"] /= 4 * torch.pi
-
-        rows["bxy"] *= M
+        mul_by_m(rows, "bxy")
 
     if "bxz" in components:
-        rows["bxz"] = torch.zeros((batch_size, 3 * nC))
+        rows["bxz"] = create_zeros((batch_size, 3 * nC))
 
         rows["bxz"][:, 0:nC] = 2 * (
                 ((dx1 * arg5) / (r1 * (arg1 ** 2) + (dx1 ** 2) * r1))
@@ -337,11 +395,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["bxz"] /= 4 * torch.pi
-
-        rows["bxz"] *= M
+        mul_by_m(rows, "bxz")
 
     if "byz" in components:
-        rows["byz"] = torch.zeros((batch_size, 3 * nC))
+        rows["byz"] = create_zeros((batch_size, 3 * nC))
 
         rows["byz"][:, 0:nC] = (
                 1 / r3 - 1 / r2 + 1 / r5 - 1 / r8 + 1 / r1 - 1 / r4 + 1 / r7 - 1 / r6
@@ -368,11 +425,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["byz"] /= 4 * torch.pi
-
-        rows["byz"] *= M
+        mul_by_m(rows, "byz")
 
     if ("bx" in components) or ("tmi" in components):
-        rows["bx"] = torch.zeros((batch_size, 3 * nC))
+        rows["bx"] = create_zeros((batch_size, 3 * nC))
 
         rows["bx"][:, 0:nC] = (
                 (-2 * torch.arctan2(dx1, arg1 + tol1))
@@ -401,11 +457,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
                 + (torch.log(arg34) - torch.log(arg39))
         )
         rows["bx"] /= -4 * torch.pi
-
-        rows["bx"] = rows["bx"] @ M
+        mul_by_m(rows, "bx")
 
     if ("by" in components) or ("tmi" in components):
-        rows["by"] = torch.zeros((batch_size, 3 * nC))
+        rows["by"] = create_zeros((batch_size, 3 * nC))
 
         rows["by"][:, 0:nC] = (
                 torch.log(arg5)
@@ -435,11 +490,10 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
         )
 
         rows["by"] /= -4 * torch.pi
-
-        rows["by"] *= M
+        mul_by_m(rows, "by")
 
     if ("bz" in components) or ("tmi" in components):
-        rows["bz"] = torch.zeros((batch_size, 3 * nC))
+        rows["bz"] = create_zeros((batch_size, 3 * nC))
 
         rows["bz"][:, 0:nC] = (
                 torch.log(arg4)
@@ -468,12 +522,13 @@ def evaluate_integral(self, receiver_location, components, orig_fn=None):
                 - (-2 * torch.arctan2(dz1, arg36_ + tol1))
         )
         rows["bz"] /= -4 * torch.pi
-
-        rows["bz"] *= M
+        mul_by_m(rows, "bz")
 
     if "tmi" in components:
-        rows["tmi"] = torch.dot(
-            self.tmi_projection, torch.vstack([rows["bx"], rows["by"], rows["bz"]])
-        )
+        # truth = orig_fn(receiver_location=receiver_location[0], components=list(components.keys()))
+        mat = torch.concat([rows[c][:, :, None] for c in ['bx', 'by', 'bz']], dim=2)
+        proj = torch.from_numpy(self.tmi_projection)
 
-    return torch.vstack([rows[component] for component in components])
+        rows["tmi"] = torch.einsum('ij,bkj->bk', proj, mat)
+
+    return torch.concat([rows[component][:, None, :] for component in components], dim=1)
