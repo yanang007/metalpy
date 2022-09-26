@@ -119,7 +119,11 @@ def __magnetics_Simulation3DIntegral_ext_evaluate_integral(self, receiver_locati
     """
 
     def create_tensor(x, dtype=None):
-        return torch.tensor(x, dtype=dtype, device=self.torch_device)
+        # return torch.tensor(x, dtype=dtype, device=self.torch_device)
+        if dtype is None:
+            return torch.from_numpy(x).to(self.torch_device)
+        else:
+            return torch.as_tensor(x, dtype=dtype, device=self.torch_device)
 
     def create_zeros(shape, dtype=None):
         return torch.zeros(shape, dtype=torch.float64 if dtype is None else dtype, device=self.torch_device)
@@ -534,7 +538,7 @@ def __magnetics_Simulation3DIntegral_ext_evaluate_integral(self, receiver_locati
     if "tmi" in components:
         # truth = orig_fn(receiver_location=receiver_location[0], components=list(components.keys()))
         mat = torch.concat([rows[c][:, :, None] for c in ['bx', 'by', 'bz']], dim=2)
-        proj = torch.from_numpy(self.tmi_projection)
+        proj = create_tensor(self.tmi_projection)
 
         rows["tmi"] = torch.einsum('ij,bkj->bk', proj, mat)
 
