@@ -30,6 +30,12 @@ def __magnetics_Simulation3DIntegral_ext_torch_on_impl(self):
 
     replaces(self, 'evaluate_integral')(__magnetics_Simulation3DIntegral_ext_evaluate_integral)
 
+    extends(self, 'estimate_memory_cost')(__magnetics_Simulation3DIntegral_ext_estimate_memory_cost)
+
+
+def __magnetics_Simulation3DIntegral_ext_estimate_memory_cost(self, size=None):
+    size = self.survey.receiver_locations.shape[0] if size is None else size
+    return 309.1 * 1024 * 1024 / 10 / 50250 * size * self.modelMap.shape[0]
 
 
 def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
@@ -48,7 +54,7 @@ def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
 
     self.nC = self.modelMap.shape[0]  # 网格数
     nD = self.survey.nD  # 数据量，观测点数 * 目标量数
-    nObs = self.survey.receiver_locations.shape[0]  # 观测点数
+    nObs = self.survey.receiver_locations.shape[0]  # self.nD  # 观测点数
 
     if self.store_sensitivities == "disk":
         sens_name = self.sensitivity_path + "sensitivity.npy"
@@ -61,7 +67,8 @@ def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
                 return kernel
     # Single threaded
     mem = psutil.virtual_memory().free
-    chunk_size = 10
+    mem -= 100 * 1024 * 1024  # 100MB
+    chunk_size = self.estimate_batch_size(mem)
     n_chunks = int(np.ceil(nObs / chunk_size))
 
     receiver_lists = np.array_split(self.survey.receiver_locations, n_chunks)
