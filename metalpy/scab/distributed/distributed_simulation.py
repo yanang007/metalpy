@@ -1,21 +1,26 @@
+import sys
+
+import SimPEG
 import numpy as np
 from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
-from SimPEG.survey import BaseSurvey, BaseSrc
 
-from metalpy.mepa import Executor
-from .injectors import extends
-from .lazy_class_delegate import LazyClassFactory
+from metalpy.mepa import Executor, LinearExecutor
+from metalpy.mexin import LazyClassFactory, PatchContext
+from metalpy.mexin.injectors import is_or_is_replacement
+
+from ..simpeg_patch_context import simpeg_patched
+from .policies import AlwaysFalse
 
 
-class ParallelizedSimulation(LazyClassFactory):
+class DistributedSimulation(LazyClassFactory):
     def __init__(self,
+                 patch,
                  simulation_class: BaseSimulation,
                  survey: LazyClassFactory,
                  executor: Executor = None,
                  *args, **kwargs):
         """
-
         Parameters
         ----------
         simulation_class
@@ -32,37 +37,28 @@ class ParallelizedSimulation(LazyClassFactory):
         Notes
         -----
             目前只用于len(receiver_list)==1的magnetics.simulation.Simulation3DIntegral，对于其它Simulation兼容性未知
+
+        Known Issues
+        ------------
+            如果在调用dpred之前未退出PatchContext，且executor为本地的LinearExecutor，那么会导致死锁
+
         """
 
-        wrong_usage_error_msg = '''Parallelized simulation takes specially constructed BaseSurvey and BaseSrc.
-    Bad:
-        source_field = SourceField(receiver_list=receiver_list, parameters=H)
-        survey = Survey(source_field)
-        simulation = Simulation3DIntegral.parallel(
-            survey=survey,
-            // ...
-        )
-        
-    Expected:
-        source_field = SourceField.parallel(receiver_list=receiver_list, parameters=H)
-        survey = Survey.parallel(source_field)
-        simulation = Simulation3DIntegral.parallel(
-            survey=survey,
-            // ...
-        )
-'''
         super().__init__(simulation_class, *args, **kwargs)
 
         if not isinstance(survey, LazyClassFactory):
-            raise ValueError(wrong_usage_error_msg)
+            raise ValueError('Error: survey must be a LazyClassFactory. '
+                             'Please check if the patch system is working correctly.')
 
         source_field = survey.find_param_by_type(LazyClassFactory, remove=True)
 
         if source_field is None:
-            raise ValueError(wrong_usage_error_msg)
+            raise ValueError('Error: source field must be a LazyClassFactory. '
+                             'Please check if the patch system is working correctly.')
 
-        if magnetics.simulation.Simulation3DIntegral != simulation_class:
-            print('Warning: ParallelizedSimulation is only tested for magnetics.simulation.Simulation3DIntegral')
+        if not is_or_is_replacement(SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral, simulation_class):
+            print('Warning: Distributed patch is only tested for magnetics.simulation.Simulation3DIntegral')
+
         # 针对magnetics.simulation.Simulation3DIntegral实现
         # TODO: 引入来支持其它Simulation，TaskDividePolicy?
         receiver_list = source_field.find_param(lambda k, v: k.startswith('receiver_'), remove=True)
@@ -80,7 +76,15 @@ class ParallelizedSimulation(LazyClassFactory):
 
         self.executor = executor
 
-        self.show_progress = False
+        self.parallelized_patch = patch
+
+        self.patch_policies = {}
+        self.default_patch_policy = AlwaysFalse()
+
+        if 'metalpy.scab.progressed' in sys.modules:
+            from ..progressed import Progressed
+            from .policies import ProgressedPolicy
+            self.define_patch_policy(Progressed, ProgressedPolicy())
 
     @staticmethod
     def worker(simulation_delegate,
@@ -89,34 +93,29 @@ class ParallelizedSimulation(LazyClassFactory):
                receiver_list_container,
                locations_list,
                _model,
-               show_progress):
+               patches):
         for receiver in receiver_list_container:
             receiver.locations = locations_list.pop(0)
 
-        survey = survey_delegate.construct(
-            source_field=source_field_delegate.construct(
-                receiver_list=receiver_list_container
-            ))
+        with simpeg_patched(*patches):
+            survey = survey_delegate.construct(
+                source_field=source_field_delegate.construct(
+                    receiver_list=receiver_list_container
+                ))
 
-        simulation = simulation_delegate.construct(survey=survey)
-
-        if show_progress:
-            from . import progressed
-            simulation.progress_on()
+            simulation = simulation_delegate.construct(survey=survey)
 
         return simulation.dpred(_model)
 
     def dpred(self, model):
+        if PatchContext.lock.locked():
+            raise AssertionError('Error: dpred must be called outside of PatchContext.')
+
         futures = []
         receiver_tasks = self.executor.arrange(*self.locations_list)
         for dest_worker in self.executor.get_workers():
-            show_progress = self.show_progress
-            if show_progress:
-                worker_id = dest_worker.get_in_group_id()
-                if worker_id is None:
-                    self.show_progress = False
-                else:
-                    show_progress = worker_id == 0
+            # 使用get_patch_policy来判断上下文中应用的patch哪些需要在worker中启用
+            patches = [patch for patch in self.get_patches() if self.get_patch_policy(patch)(patch, dest_worker)]
 
             future = self.executor.submit(
                 self.worker, worker=dest_worker,
@@ -126,7 +125,7 @@ class ParallelizedSimulation(LazyClassFactory):
                 receiver_list_container=self.receiver_list,
                 locations_list=receiver_tasks.assign(dest_worker),
                 _model=model,
-                show_progress=show_progress
+                patches=patches
             )
             futures.append(future)
 
@@ -134,25 +133,12 @@ class ParallelizedSimulation(LazyClassFactory):
         ret = np.concatenate(ret)
         return ret
 
-    def progress_on(self):
-        self.show_progress = True
+    def define_patch_policy(self, patch_type, policy):
+        self.patch_policies[patch_type] = policy
 
+    def get_patch_policy(self, patch):
+        policy = self.patch_policies.get(patch.__class__, self.default_patch_policy)
+        return policy
 
-@extends(BaseSimulation, 'parallel')
-@classmethod
-def __BaseSimulation_ext_parallel(cls, executor=None, *args, **kwargs):
-    return ParallelizedSimulation(cls, executor=executor, *args, **kwargs)
-
-
-@extends(BaseSurvey, 'parallel')
-@classmethod
-def __BaseSurvey_ext_parallel(cls, *args, **kwargs):
-    return LazyClassFactory(cls, *args, **kwargs)
-
-
-@extends(BaseSrc, 'parallel')
-@classmethod
-def __BaseSrc_ext_parallel(cls, *args, **kwargs):
-    return LazyClassFactory(cls, *args, **kwargs)
-
-# BaseSimulation.parallel = parallelized_simulation
+    def get_patches(self):
+        return self.parallelized_patch.persisted_context.get_patches()

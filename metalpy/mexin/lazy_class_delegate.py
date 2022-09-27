@@ -1,4 +1,8 @@
 class LazyClassFactory:
+    """用于劫持类的构造函数，实现延迟构造，常配合.injectors.hijack使用
+    通过construct可以使用对应的类进行构造，new_kwargs指定用于替换或追加参数
+    通过clone可以复制一个新的延迟构造器
+    """
     def __init__(self, cls, *args, **kwargs):
         self.cls = cls
         self.args = list(args)  # 方便删除
