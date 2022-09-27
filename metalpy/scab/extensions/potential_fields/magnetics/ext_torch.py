@@ -39,8 +39,10 @@ def __magnetics_Simulation3DIntegral_ext_estimate_memory_cost(self, size=None):
 
 
 def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
-    if not hasattr(self, 'torch_device'):
-        return orig_fn(self)
+    # evaluate_integral暂时没有转换回来，因此这个方法调用时会调用错误的evaluate_integralfan方法
+    # TODO: 修复他
+    # if not hasattr(self, 'torch_device'):
+    #     return orig_fn()
 
     def create_tensor(x, dtype=None):
         # return torch.tensor(x, dtype=dtype, device=self.torch_device)
@@ -90,13 +92,14 @@ def __magnetics_Simulation3DIntegral_ext_linear_operator(self, orig_fn):
     model = create_tensor(self.model)
 
     if self.store_sensitivities == "forward_only":
-        kernel = torch.einsum('og,g->o', kernel, model)
+        kernel = torch.einsum('ocg,g->oc', kernel, model)
 
     if self.store_sensitivities == "disk":
         print(f"writing sensitivity to {sens_name}")
         os.makedirs(self.sensitivity_path, exist_ok=True)
         np.save(sens_name, kernel)
-    return kernel
+
+    return kernel.detach().numpy()
 
 
 def __magnetics_Simulation3DIntegral_ext_evaluate_integral(self, receiver_location, components, orig_fn=None):
