@@ -84,7 +84,7 @@ class Obj2(Shape3D):
             model.translate(-np.asarray(model.bounds[::2]), inplace=True)
             self.model = model
 
-    def place(self, mesh_cell_centers, worker_id):
+    def do_place(self, mesh_cell_centers, worker_id):
         model = self.model
 
         x_min, x_max, y_min, y_max, z_min, z_max = model.bounds

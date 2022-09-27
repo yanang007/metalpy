@@ -3,3 +3,4 @@ from .cuboid import Cuboid
 from .tunnel import Tunnel
 from .prism import Prism
 from .obj import Obj
+from .obj2 import Obj2

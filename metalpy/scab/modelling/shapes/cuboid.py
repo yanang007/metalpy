@@ -16,7 +16,7 @@ class Cuboid(Shape3D):
         self.corner = np.min(np.c_[p1, p2], axis=1)
         self.lengths = np.abs(p2 - p1)
 
-    def place(self, mesh_cell_centers, worker_id):
+    def do_place(self, mesh_cell_centers, worker_id):
         indices = is_inside_cuboid(mesh_cell_centers, self.corner, self.lengths) # np.all((mesh.cell_centers - self.corner) < self.lengths, axis=1)
         return indices
 

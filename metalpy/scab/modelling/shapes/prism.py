@@ -55,22 +55,18 @@ class Edge:
 
 
 class Prism(Shape3D):
-    def __init__(self, pts, z0, z1, direction=(1, 0, 0)):
+    def __init__(self, pts, z0, z1):
         """
         :param pts: 底面多边形顶点列表
         :param z0: 底面高度
         :param z1: 顶面高度
-        :param direction: TODO: 棱柱方向，默认为+z方向
         """
         super().__init__()
         self.pts = tuple([tuple(pt) for pt in pts])
         self.z0 = z0
         self.z1 = z1
 
-        assert direction == (1, 0, 0)
-        self.direction = np.linalg.norm(direction)
-
-    def place(self, mesh_cell_centers, worker_id):
+    def do_place(self, mesh_cell_centers, worker_id):
         # 优化: 只判断在xyz三轴边界框内的点
         p0 = np.asarray((*np.min(self.pts, axis=0), self.z0))
         p1 = np.asarray((*np.max(self.pts, axis=0), self.z1))

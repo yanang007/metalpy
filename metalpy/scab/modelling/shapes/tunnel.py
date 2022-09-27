@@ -8,13 +8,12 @@ def is_abs_distance_in(arr, x0, r):
 
 
 class Tunnel(Shape3D):
-    def __init__(self, p0, r0, r1, L, direction=(1, 0, 0)):
+    def __init__(self, p0, r0, r1, L):
         """
         :param p0: 起始点，隧道的左中位置
         :param r0: 内圆半径
         :param r1: 外圆半径
         :param L: 隧道长度
-        :param direction: TODO: 隧道方向，默认为x方向
         """
         super().__init__()
         self.p0 = p0 = np.asarray(p0)
@@ -22,10 +21,7 @@ class Tunnel(Shape3D):
         self.r1 = r1
         self.L = L
 
-        assert direction == (1, 0, 0)
-        self.direction = np.linalg.norm(direction)
-
-    def place(self, mesh_cell_centers, worker_id):  # TODO: 处理隧道方向
+    def do_place(self, mesh_cell_centers, worker_id):
         x0, y0, z0 = self.p0
         L = self.L
         r0, r1 = self.r0, self.r1

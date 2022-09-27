@@ -13,7 +13,7 @@ class Obj(Shape3D):
         self.model = model
         self.grid_size = np.asarray([dx, dy, dz])
 
-    def place(self, mesh_cell_centers, worker_id):
+    def do_place(self, mesh_cell_centers, worker_id):
         grids = mesh_cell_centers / self.grid_size
         grids = grids.astype(int)
 
