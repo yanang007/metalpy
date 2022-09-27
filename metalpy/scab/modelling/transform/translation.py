@@ -10,3 +10,6 @@ class Translation(Transform):
 
     def transform(self, mesh):
         return mesh + self.delta
+
+    def clone(self):
+        return Translation(*self.delta)

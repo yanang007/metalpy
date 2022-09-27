@@ -43,7 +43,7 @@ class Tunnel(Shape3D):
     def __hash__(self):
         return hash((*self.p0, self.r0, self.r1, self.L))
 
-    def clone(self):
+    def do_clone(self):
         return Tunnel(self.p0, self.r0, self.r1, self.L)
 
     def plot(self, ax, color):

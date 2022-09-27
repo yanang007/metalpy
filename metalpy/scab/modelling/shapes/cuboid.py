@@ -58,7 +58,7 @@ class Cuboid(Shape3D):
     def __hash__(self):
         return hash((*self.corner, *self.lengths))
 
-    def clone(self):
+    def do_clone(self):
         return Cuboid(self.p1, self.p2)
 
     def plot(self, ax, color):

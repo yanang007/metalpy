@@ -29,8 +29,8 @@ class Obj(Shape3D):
     def __hash__(self):
         return hash((*self.model.flatten(), *self.model.shape, *self.grid_size))
 
-    def clone(self):
-        return Obj(self.model.clone(), self.dx, self.dy, self.dz)
+    def do_clone(self):
+        return Obj(self.model.clone(), *self.grid_size)
 
     def plot(self, ax, color):
         pass

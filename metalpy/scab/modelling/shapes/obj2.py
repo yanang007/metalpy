@@ -106,7 +106,7 @@ class Obj2(Shape3D):
         rand = np.random.RandomState(int(arr[len(arr) // 2]))
         return hash((*rand.choice(arr, min(len(arr), 10), replace=False),))
 
-    def clone(self):
+    def do_clone(self):
         ret = Obj2(None)
         ret.model = self.model.copy(True)
         return ret

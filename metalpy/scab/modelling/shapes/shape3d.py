@@ -6,7 +6,6 @@ from ..transform import CompositeTransform, Transform, Translation, Rotation
 class Shape3D(ABC):
     def __init__(self):
         self.transforms = CompositeTransform()
-        pass
 
     def place(self, mesh_cell_centers, worker_id):
         """
@@ -30,8 +29,13 @@ class Shape3D(ABC):
     def __hash__(self):
         raise NotImplementedError()
 
-    @abstractmethod
     def clone(self):
+        ret = self.do_clone()
+        ret.transforms = self.transforms.clone()
+        return ret
+
+    @abstractmethod
+    def do_clone(self):
         raise NotImplementedError()
 
     @abstractmethod

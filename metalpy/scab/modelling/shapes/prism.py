@@ -99,7 +99,7 @@ class Prism(Shape3D):
     def __hash__(self):
         return hash((*self.pts, self.z0, self.z1))
 
-    def clone(self):
+    def do_clone(self):
         return Prism(self.pts, self.z0, self.z1)
 
     def plot(self, ax, color):

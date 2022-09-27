@@ -13,3 +13,10 @@ class CompositeTransform(Transform):
         for trans in self.transforms:
             mesh = trans.transform(mesh)
         return mesh
+
+    def clone(self):
+        ret = CompositeTransform()
+        for trans in self.transforms:
+            ret.add(trans)
+
+        return ret
