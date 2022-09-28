@@ -7,11 +7,12 @@ class extends:
         self.name = name
 
     def __call__(self, func):
-        wrapper = lambda *args, **kwargs: func(*args, **kwargs)
-
         if not isinstance(self.target, type):
             # 对对象进行修改需要 types.MethodType包装
+            wrapper = lambda *args, **kwargs: func(*args, **kwargs)
             wrapper = types.MethodType(wrapper, self.target)
+        else:
+            wrapper = func
 
         cmd = f'self.target.{self.name} = wrapper'
         exec(cmd)
