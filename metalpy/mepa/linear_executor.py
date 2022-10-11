@@ -1,6 +1,6 @@
 import psutil
 
-from .executor import Executor
+from .executor import Executor, traverse_args
 from .lazy_evaluator import LazyEvaluator
 from .worker import Worker
 
@@ -19,6 +19,9 @@ class LinearExecutor(Executor):
         self.n_units = n_units
 
     def do_submit(self, func, workers=None, *args, **kwargs):
+        # 自动提取所有future
+        args, kwargs = traverse_args(args, kwargs,
+                                     lambda x: x if not isinstance(x, LazyEvaluator) else self.gather([x])[0])
         return LazyEvaluator(func, *args, **kwargs)
 
     def get_workers(self):

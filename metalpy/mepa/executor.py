@@ -54,3 +54,16 @@ class Executor(ABC):
         distributed.Client.scatter
         """
         return data
+
+
+def traverse_args(args, kwargs, func):
+    # 对所有的参数进行处理
+    _args = []
+    for arg in args:
+        _args.append(func(arg))
+
+    _kwargs = {}
+    for k, v in kwargs.items():
+        _kwargs[k] = func(v)
+
+    return _args, _kwargs

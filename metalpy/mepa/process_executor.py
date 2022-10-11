@@ -1,8 +1,8 @@
-from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import ProcessPoolExecutor, wait, Future
 
 import psutil
 
-from .executor import Executor
+from .executor import Executor, traverse_args
 from .worker import Worker
 
 
@@ -25,6 +25,9 @@ class ProcessExecutor(Executor):
         see also:
         ProcessPoolExecutor.submit
         """
+        # 自动提取所有future
+        args, kwargs = traverse_args(args, kwargs,
+                                     lambda x: x if not isinstance(x, Future) else self.gather([x])[0])
         return self.pool.submit(func, *args, **kwargs)
 
     def get_workers(self):
