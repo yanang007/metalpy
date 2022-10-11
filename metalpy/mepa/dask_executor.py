@@ -61,3 +61,6 @@ class DaskExecutor(Executor):
 
     def gather(self, futures):
         return self.client.gather(futures)
+
+    def scatter(self, data):
+        return self.client.scatter(data)

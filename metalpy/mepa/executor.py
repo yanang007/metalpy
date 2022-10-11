@@ -53,4 +53,4 @@ class Executor(ABC):
         see also
         distributed.Client.scatter
         """
-        pass
+        return data
