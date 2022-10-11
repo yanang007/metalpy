@@ -42,12 +42,16 @@ class DaskExecutor(Executor):
         else:
             self.n_units = n_units
 
-    def do_submit(self, func, workers=None, *args, **kwargs):
+    def do_submit(self, func, *args, workers=None, **kwargs):
         if isinstance(workers, Worker):
             workers = [workers]
-        targets = [worker.get_name() for worker in workers]
-        kwargs['workers'] = targets
-        return self.client.submit(func, *args, **kwargs, allow_other_workers=True)
+
+        if workers is not None:
+            targets = [worker.get_name() for worker in workers]
+            kwargs['workers'] = targets
+            kwargs.setdefault('allow_other_workers', True)
+
+        return self.client.submit(func, *args, **kwargs)
 
     def get_workers(self):
         return self.workers
