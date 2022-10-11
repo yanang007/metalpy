@@ -1,12 +1,19 @@
+class UnFinished:
+    pass
+
+
+_unfinished = UnFinished()
+
+
 class LazyEvaluator:
     def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.rval = None
+        self.rval = _unfinished
 
     def get(self):
-        if self.rval is None:
+        if self.rval == _unfinished:
             self.rval = self.func(*self.args, **self.kwargs)
         return self.rval
 
