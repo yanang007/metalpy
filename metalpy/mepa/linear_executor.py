@@ -30,5 +30,8 @@ class LinearExecutor(Executor):
     def get_n_units(self):
         return self.n_units
 
+    def is_local(self):
+        return True
+
     def gather(self, futures):
         return [future.result() for future in futures]

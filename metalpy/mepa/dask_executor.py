@@ -59,6 +59,9 @@ class DaskExecutor(Executor):
     def get_n_units(self):
         return self.n_units
 
+    def is_local(self):
+        return False
+
     def gather(self, futures):
         return self.client.gather(futures)
 

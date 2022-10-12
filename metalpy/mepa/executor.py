@@ -42,6 +42,10 @@ class Executor(ABC):
         pass
 
     @abstractmethod
+    def is_local(self):
+        return True
+
+    @abstractmethod
     def gather(self, futures):
         pass
 
