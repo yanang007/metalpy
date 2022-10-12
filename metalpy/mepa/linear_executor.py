@@ -18,7 +18,7 @@ class LinearExecutor(Executor):
         self.workers = [Worker(f'local-{i}', 1) for i in range(n_units)]
         self.n_units = n_units
 
-    def do_submit(self, func, workers=None, *args, **kwargs):
+    def do_submit(self, func, *args, workers=None, **kwargs):
         # 自动提取所有future
         args, kwargs = traverse_args(args, kwargs,
                                      lambda x: x if not isinstance(x, LazyEvaluator) else self.gather([x])[0])
