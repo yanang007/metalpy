@@ -142,7 +142,9 @@ class DistributedSimulation(LazyClassFactory):
             raise AssertionError('Error: dpred must be called outside of PatchContext.')
 
         simulation_delegate = self.clone()  # 使用clone创建一个lazy构造器
-        simulation_delegate, model = self.compress_model(simulation_delegate, model)
+
+        if not self.executor.is_local():
+            simulation_delegate, model = self.compress_model(simulation_delegate, model)
 
         futures = []
         receiver_tasks = self.executor.arrange(*self.locations_list)
