@@ -42,3 +42,9 @@ class LazyClassFactory:
         kwargs = self.kwargs.copy()
         kwargs.update(new_kwargs)
         return LazyClassFactory(self.cls, *self.args, **kwargs)
+
+    def __getitem__(self, key):
+        return self.kwargs[key]
+
+    def __setitem__(self, key, value):
+        self.kwargs[key] = value

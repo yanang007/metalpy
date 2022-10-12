@@ -19,3 +19,9 @@ class LazyEvaluator:
 
     def result(self):
         return self.get()
+
+    def __getitem__(self, key):
+        return self.kwargs[key]
+
+    def __setitem__(self, key, value):
+        self.kwargs[key] = value
