@@ -13,6 +13,8 @@ psutil
 matplotlib
 scikit-learn
 
+blosc2 >= 0.4.0
+
 # optional
 # bokeh
 # pyvista
