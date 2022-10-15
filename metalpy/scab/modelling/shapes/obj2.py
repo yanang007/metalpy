@@ -44,17 +44,33 @@ def check_scalar_or_list(val, size, _default):
 class Obj2(Shape3D):
     def __init__(self, model: Union[str, pyvista.DataSet],
                  xsize=None, ysize=None, zsize=None, size=None,
-                 xscale=None, yscale=None, zscale=None, scale=None
+                 xscale=None, yscale=None, zscale=None, scale=None,
+                 surface_thickness=None, surface_range=None
                  ):
         """
-        :param model: 模型路径或PyVista (当为None时不主动构造，用于内部的拷贝代码，使用后果自负)
-        二选一
-        :param nx, ny, nz: 模型三方向网格数
+        :param model: 模型路径或PyVista模型对象 (当为None时不主动构造，用于内部的拷贝代码，非必要请勿使用)
         二选一
         :param xsize, ysize, zsize, size: 模型缩放后的新尺寸
         :param xscale, yscale, zscale, scale: 模型缩放比例
+
+        仅保留表面，参数二选一（存在性能影响）
+        :param surface_thickness: 表面厚度（向内），即surface_range=[-surface_range, 0]
+        :param surface_range: [(float|None), (float|None)] 表面范围（小于0表示模型内，大于0表示模型外，None表示不作判断）
         """
         super().__init__()
+
+        if surface_thickness is not None or surface_range is not None:
+            self.surface_only = True
+            if surface_range is not None:
+                self.surface_range = surface_range
+            else:
+                if surface_thickness is not None:
+                    self.surface_range = [-surface_thickness, 0]
+                else:
+                    self.surface_range = None
+        else:
+            self.surface_only = False
+            self.surface_range = None
 
         if model is not None:
             should_scale_be_inplace = False
@@ -87,28 +103,40 @@ class Obj2(Shape3D):
     def do_place(self, mesh_cell_centers, worker_id):
         model = self.model
 
-        x_min, x_max, y_min, y_max, z_min, z_max = model.bounds
-        x = np.arange(x_min, x_max, 1)
-        y = np.arange(y_min, y_max, 1)
-        z = np.arange(z_min, z_max, 1)
-        x, y, z = np.meshgrid(x, y, z)
-
         poly = pv.PolyData(mesh_cell_centers)
-        mesh = pv.UnstructuredGrid(pv.StructuredGrid(*(x[:, None, None] for x in mesh_cell_centers.T)))
         mesh = pv.UnstructuredGrid(poly.cast_to_unstructured_grid())
-        selection = mesh.select_enclosed_points(self.model.extract_surface(), tolerance=0.0, check_surface=False)
-        indices = selection.point_data['SelectedPoints'].view(np.bool_)
+
+        surface = model.extract_surface()
+
+        if self.surface_only:
+            surface_distance = mesh.compute_implicit_distance(surface)
+            smin, smax = self.surface_range
+
+            indices = surface_distance['implicit_distance']
+
+            if smax is not None:
+                indices = indices <= smax
+
+            if smin is not None:
+                indices = indices >= smin
+        else:
+            selection = mesh.select_enclosed_points(surface, tolerance=0.0, check_surface=False)
+            indices = selection['SelectedPoints'].view(np.bool_)
 
         return indices
 
     def __hash__(self):
         arr = self.model.cell_centers().points.flatten()
         rand = np.random.RandomState(int(arr[len(arr) // 2]))
-        return hash((*rand.choice(arr, min(len(arr), 10), replace=False),))
+        surface_range = self.surface_range if self.surface_range is not None else (None,)
+        return hash((*rand.choice(arr, min(len(arr), 10), replace=False),
+                     self.surface_only,
+                     *surface_range,
+                     ))
 
     def do_clone(self):
-        ret = Obj2(None)
-        ret.model = self.model.copy(True)
+        ret = Obj2(None, surface_range=self.surface_range)
+        ret.model = self.model.copy(deep=True)
         return ret
 
     def plot(self, ax, color):
