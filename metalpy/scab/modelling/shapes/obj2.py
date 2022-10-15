@@ -1,9 +1,12 @@
+import os.path
 from typing import Union
 
 import numpy as np
-import pyvista
 import pyvista as pv
 
+from metalpy.utils.file import make_cache_file
+from metalpy.utils.model import split_models_in_memory
+from metalpy.utils.time import Timer
 from . import Shape3D
 
 
@@ -42,7 +45,7 @@ def check_scalar_or_list(val, size, _default):
 
 
 class Obj2(Shape3D):
-    def __init__(self, model: Union[str, pyvista.DataSet],
+    def __init__(self, model: Union[str, pv.DataSet],
                  xsize=None, ysize=None, zsize=None, size=None,
                  xscale=None, yscale=None, zscale=None, scale=None,
                  surface_thickness=None, surface_range=None
@@ -75,7 +78,23 @@ class Obj2(Shape3D):
         if model is not None:
             should_scale_be_inplace = False
             if isinstance(model, str):
-                model = pv.get_reader(model).read()
+                model_path = model
+                model_name = os.path.basename(model_path)
+                cache_path = make_cache_file(model_name + '.vtk')
+
+                if os.path.exists(cache_path):
+                    model_path = cache_path
+
+                reader = pv.get_reader(model_path)
+                reader.show_progress()
+
+                timer = Timer()
+                with timer:
+                    model = reader.read()
+
+                if timer.elapsed > 0 and cache_path != model_path:
+                    model.save(cache_path, binary=True)
+
                 should_scale_be_inplace = True
 
             __default = model.length / 100
@@ -98,14 +117,15 @@ class Obj2(Shape3D):
 
             model = model.scale(scale, inplace=should_scale_be_inplace)
             model.translate(-np.asarray(model.bounds[::2]), inplace=True)
+
+            self.models = split_models_in_memory(model)
+            self.models[0] = self.models[0].scale([s * 250000 for s in scale], inplace=should_scale_be_inplace)
+            self.models[0].translate(-np.asarray(self.models[0].bounds[::2]), inplace=True)
             self.model = model
 
-    def do_place(self, mesh_cell_centers, worker_id):
-        model = self.model
-
+    def place_impl(self, model, mesh_cell_centers, worker_id):
         poly = pv.PolyData(mesh_cell_centers)
         mesh = pv.UnstructuredGrid(poly.cast_to_unstructured_grid())
-
         surface = model.extract_surface()
 
         if self.surface_only:
@@ -122,6 +142,17 @@ class Obj2(Shape3D):
         else:
             selection = mesh.select_enclosed_points(surface, tolerance=0.0, check_surface=False)
             indices = selection['SelectedPoints'].view(np.bool_)
+
+        return indices
+
+    def do_place(self, mesh_cell_centers, worker_id):
+        indices = None
+        for model in self.models:
+            ret = self.place_impl(model, mesh_cell_centers, worker_id)
+            if indices is None:
+                indices = ret
+            else:
+                indices = np.logical_or(indices, ret)
 
         return indices
 

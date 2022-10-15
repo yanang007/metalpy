@@ -21,3 +21,9 @@ def locate_file(path, predicate):
 
 def locate_prefixed_file(path, prefix):
     return locate_file(path, lambda file: file.startswith(prefix))
+
+
+def make_cache_file(name):
+    cache_dir = './.cache'
+    ensure_dir(cache_dir)
+    return os.path.join(cache_dir, name)
