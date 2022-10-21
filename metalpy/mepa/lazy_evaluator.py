@@ -13,7 +13,7 @@ class LazyEvaluator:
         self.rval = _unfinished
 
     def get(self):
-        if self.rval == _unfinished:
+        if isinstance(self.rval, UnFinished):
             self.rval = self.func(*self.args, **self.kwargs)
         return self.rval
 
