@@ -25,5 +25,13 @@ def locate_prefixed_file(path, prefix):
 
 def make_cache_file(name):
     cache_dir = './.cache'
-    ensure_dir(cache_dir)
-    return os.path.join(cache_dir, name)
+    ret = os.path.join(cache_dir, name)
+    ensure_filepath(ret)
+    return ret
+
+
+def make_cache_directory(name):
+    cache_dir = './.cache'
+    ret = os.path.join(cache_dir, name)
+    ensure_dir(ret)
+    return ret

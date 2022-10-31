@@ -2,6 +2,7 @@
 **/modeling/*
 **/output/*
 **/stdpts/*
+**/.cache/*
 .idea/*
 **/__pycache__/*
 

@@ -10,30 +10,33 @@ class QuickUnion:
         """
         # TODO: 考察是否有必要使用int64作为索引类型
         self.unions = np.arange(n)
-        self.array_buf = np.zeros(n, dtype=np.int32)
 
     def connect(self, a, b):
-        rdst, da = self.find_root(a)
-        rsrc, db = self.find_root(b)
-        if da < db:
-            rdst, rsrc = rsrc, rdst
+        rdst = self.find_root(a)
+        rsrc = self.find_root(b)
         self.unions[rsrc] = rdst
 
     def find_root(self, a):
-        dist = 0
         root = self.unions[a]
         while root != a:
-            self.array_buf[dist] = a
-            dist += 1
             a = root
             root = self.unions[a]
 
-        self.unions[self.array_buf[:dist]] = root  # 坍缩树优化
-        return root, dist
+        return root
 
-    def collapse(self):
-        for i in tqdm.trange(len(self.unions)):
-            self.find_root(i)
+    def collapse(self, verbose=False):
+        if verbose:
+            span = tqdm.trange(len(self.unions), desc='Collapsing unions')
+        else:
+            span = range(len(self.unions))
+
+        for i in span:
+            a = i
+            root = self.unions[a]
+            while root != a:
+                a = root
+                root = self.unions[a]
+            self.unions[i] = root
 
 
 class ConnectedTriangleSurfaces:
@@ -44,15 +47,15 @@ class ConnectedTriangleSurfaces:
 
     def add(self, pts):
         vs = set(pts)
-        diff = None
-
         candidates = []
+        diffs = []
 
         # 考虑到面在各个局部体内的连续性，一般而言新的面会邻接最后一个点集或者属于新的点集合
         for group in reversed(self.point_groups):
             diff = vs.difference(group)
             if len(diff) <= 1:
                 candidates.append(group)
+                diffs.append(diff)
 
                 if len(candidates) > 1:
                     break  # 因为针对三角面，所以一定只能同时邻接两个组
@@ -63,8 +66,8 @@ class ConnectedTriangleSurfaces:
             target_group = set(pts)
             self.point_groups.append(target_group)
         elif n_adjacent == 1:
-            if len(diff) == 1:
-                candidates[0].add(diff.pop())
+            assert len(diffs) == 1
+            candidates[0].update(diffs.pop())
         else:
             for g in candidates[1:]:
                 self.point_groups.remove(g)
