@@ -1,3 +1,3 @@
-from .patch_policy import PatchPolicy
-from .always_false_policy import AlwaysFalse
-from .progressed_policy import ProgressedPolicy
+from .distributable import Distributable
+from .not_distributable import NotDistributable
+from .distribute_once import DistributeOnce

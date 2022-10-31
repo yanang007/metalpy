@@ -11,7 +11,7 @@ from metalpy.mexin import LazyClassFactory, PatchContext
 from metalpy.mexin.injectors import is_or_is_replacement
 
 from ..simpeg_patch_context import simpeg_patched
-from .policies import AlwaysFalse
+from .policies import Distributable, NotDistributable
 
 
 class DistributedSimulation(LazyClassFactory):
@@ -79,14 +79,6 @@ class DistributedSimulation(LazyClassFactory):
 
         self.parallelized_patch = patch
 
-        self.patch_policies = {}
-        self.default_patch_policy = AlwaysFalse()
-
-        if 'metalpy.scab.progressed' in sys.modules:
-            from ..progressed import Progressed
-            from .policies import ProgressedPolicy
-            self.define_patch_policy(Progressed, ProgressedPolicy())
-
     @staticmethod
     def auto_decompress_simulation(sim, ind_future):
         sim['actInd'] = blosc2.unpack_array2(ind_future)
@@ -150,7 +142,8 @@ class DistributedSimulation(LazyClassFactory):
         receiver_tasks = self.executor.arrange(*self.locations_list)
         for dest_worker in self.executor.get_workers():
             # 使用get_patch_policy来判断上下文中应用的patch哪些需要在worker中启用
-            patches = [patch for patch in self.get_patches() if self.get_patch_policy(patch)(patch, dest_worker)]
+            patches = [patch for patch in self.get_patches()
+                       if self.get_patch_policy(patch).should_distribute_to(dest_worker)]
 
             future = self.executor.submit(
                 self.worker, worker=dest_worker,
@@ -168,12 +161,12 @@ class DistributedSimulation(LazyClassFactory):
         ret = np.concatenate(ret)
         return ret
 
-    def define_patch_policy(self, patch_type, policy):
-        self.patch_policies[patch_type] = policy
-
-    def get_patch_policy(self, patch):
-        policy = self.patch_policies.get(patch.__class__, self.default_patch_policy)
-        return policy
+    @staticmethod
+    def get_patch_policy(patch):
+        if isinstance(patch, Distributable):
+            return patch
+        else:
+            return NotDistributable()
 
     def get_patches(self):
         return self.parallelized_patch.persisted_context.get_patches()

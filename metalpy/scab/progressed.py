@@ -4,6 +4,7 @@ from SimPEG.simulation import BaseSimulation
 from metalpy.mexin import Mixin
 from metalpy.mexin.patch import Patch
 from metalpy.mexin.injectors import after
+from .distributed.policies import DistributeOnce
 
 
 class Progress(Mixin):
@@ -40,7 +41,7 @@ class Progress(Mixin):
             self.progressbar.update(count)
 
 
-class Progressed(Patch):
+class Progressed(Patch, DistributeOnce):
     def __init__(self):
         super().__init__()
 
