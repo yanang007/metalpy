@@ -1,0 +1,1 @@
+from .demagnetization import Demagnetization

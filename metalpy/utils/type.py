@@ -38,3 +38,10 @@ def pop_or_default(dictionary, key, _default=None):
         _default=_default,
         remove=True
     )
+
+
+def not_none_or_default(val, _default):
+    if val is None:
+        return _default
+    else:
+        return val
