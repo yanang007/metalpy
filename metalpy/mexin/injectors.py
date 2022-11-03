@@ -28,8 +28,8 @@ def create_replacement(func, orig, executor):
         # property不可以被构造新成员
         # 因此继承一个子类来实现引入原成员
         ret = PropertyReplacement(func, orig, executor)
-    elif orig is not None and is_init(orig):
-        # 构造函数必须是函数类型function才能被super(...)识别并绑定self参数
+    elif isinstance(executor.target, type):
+        # 类的成员函数必须是函数类型function才能在实例化时被识别并绑定self参数
         # 因此采用这个workaround来引入原函数
         func.repl_orig = orig
         func.repl_executor = executor
@@ -80,17 +80,13 @@ def get_ancestor(repl):
     return prev
 
 
-def is_init(repl):
-    return repl.__name__ == '__init__'
-
-
 def is_or_is_replacement(obj, other):
     obj = obj if not hasattr(obj, 'repl_orig') else getattr(obj, 'repl_orig')
     return obj == other
 
 
 def wrap_method_with_target(target, func):
-    if not isinstance(target, type):
+    if not isinstance(target, type):  # 目标是实例，直接绑定
         wrapper = types.MethodType(func, target)
     else:
         wrapper = func
@@ -187,7 +183,30 @@ class replaces(RecoverableInjector):
         exec(cmd)
 
 
+class FunctionTermination:
+    """指示提前终止函数，目前仅在before注解中使用，指示提前终止函数
+    """
+    def __init__(self, *rets):
+        if len(rets) == 0:
+            self.ret = None
+        elif len(rets) == 1:
+            self.ret = rets[0]
+        else:
+            self.ret = rets
+
+
+def terminate():
+    return FunctionTermination()
+
+
+def terminate_with(*rets):
+    return FunctionTermination(*rets)
+
+
 class before(replaces):
+    """将代码注入到目标函数开始前执行
+    return terminate() 或 return terminate_with(*args) 可以指示提前终止函数
+    """
     def __init__(self, target, name):
         super().__init__(target, name)
 
@@ -199,7 +218,9 @@ class before(replaces):
             if is_method:
                 _self = args[0]
                 args = args[1:]
-            func(*args, **kwargs)
+            ret = func(*args, **kwargs)
+            if isinstance(ret, FunctionTermination):
+                return ret.ret
             return orig_fn(*args, **kwargs)
 
         wrapper = wrap_method_with_target(self.target, wrapper)
@@ -207,6 +228,9 @@ class before(replaces):
 
 
 class after(replaces):
+    """将代码注入到目标函数返回后执行
+    返回非空的值可以替换原函数的返回值
+    """
     def __init__(self, target, name):
         super().__init__(target, name)
 
@@ -219,7 +243,9 @@ class after(replaces):
                 _self = args[0]
                 args = args[1:]
             result = orig_fn(*args, **kwargs)
-            func(*args, **kwargs)
+            ret = func(*args, **kwargs)
+            if ret is not None:
+                result = ret
             return result
 
         return super().__call__(wrapper)
