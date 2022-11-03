@@ -44,8 +44,10 @@ class Patch(ABC):
         pass
 
     def commit(self):
-        for target_type, mixins in self.mixins.items():  # 将混入mixin的代码插入到对应类的构造函数
-            self.__mixin_injs.append((after(target_type, '__init__'), (self.__apply_mixins(mixins),), {}))
+        if len(self.__mixin_injs) == 0:
+            # 保证Patch可重入
+            for target_type, mixins in self.mixins.items():  # 将混入mixin的代码插入到对应类的构造函数
+                self.__mixin_injs.append((after(target_type, '__init__'), (self.__apply_mixins(mixins),), {}))
 
         for inj, args, kwargs in self.__get_injs():
             inj(*args, **kwargs)

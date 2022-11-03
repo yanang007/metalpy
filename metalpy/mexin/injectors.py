@@ -1,3 +1,4 @@
+import importlib
 import types
 
 from abc import ABC, abstractmethod
@@ -38,6 +39,29 @@ def create_replacement(func, orig, executor):
         ret = Replacement(func, orig, executor)
 
     return ret
+
+
+class TemporaryReversion:
+    def __init__(self, *repls):
+        self.repls = repls
+        self.replacements = []
+
+    def __enter__(self):
+        for repl in self.repls:
+            self.replacements.append(repl.func)
+            repl.repl_executor.rollback()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for repl, replacement in zip(self.repls, self.replacements):
+            repl.repl_executor(replacement)
+
+
+def revert(*repls):
+    """临时还原某些替换
+    例如类名劫持，有些类在调用基类构造函数时会采用类似于super(<class-name>, self).__init__(...)的形式，
+    导致在被劫持状态下无法正常构造，这时需要进行临时的revert操作
+    """
+    return TemporaryReversion(*repls)
 
 
 def get_orig(repl):
@@ -113,7 +137,20 @@ class hijacks(RecoverableInjector):
         self.backup = eval(f'self.prefix.{self.target}')
 
     def __call__(self, func):
-        wrapper = create_replacement(func, self.backup, self)
+        wrapper = None
+
+        if hasattr(self.target, '__init__'):
+            # TODO (low-priority): 也许可以通过修改super函数实现
+            def reverted_wrapper(*args, **kwargs):
+                # 用于保证类名在被劫持状态下仍然能进行构造
+                with revert(wrapper):
+                    ret = func(*args, **kwargs)
+                return ret
+            repl = reverted_wrapper
+        else:
+            repl = func
+
+        wrapper = create_replacement(repl, self.backup, self)
         cmd = f'self.prefix.{self.target} = wrapper'
         exec(cmd)
         return func
@@ -186,3 +223,57 @@ class after(replaces):
             return result
 
         return super().__call__(wrapper)
+
+
+def split_object_path(module_path: str):
+    """ 分割模块成员的全限定路径
+    Parameters
+    ----------
+    module_path
+        对象的全限定路径
+    Returns
+    -------
+        (对象所在模块路径，对象名)
+
+    Examples
+    --------
+    >>> split_object_path('xxx.yyy.zzz.Target')
+    ('xxx.yyy.zzz', 'Target')
+    """
+    i = module_path.rfind('.')
+    return module_path[:i], module_path[i+1:]
+
+
+def get_class_path(cls):
+    """从类目标获取目标的全限定路径
+    Parameters
+    ----------
+    cls
+        类目标
+    Returns
+    -------
+        类目标的全限定路径
+    Examples
+    --------
+    >>> get_class_path(xxx.yyy.zzz.Target)
+    'xxx.yyy.zzz.Target'
+    """
+    return str(cls)[8:-2]
+
+
+def get_object_by_path(path):
+    """通过全限定路径获取目标
+    Parameters
+    ----------
+    path
+        目标的全限定路径
+    Returns
+    -------
+        全限定路径所标识的目标
+    Examples
+    --------
+    >>> get_object_by_path('xxx.yyy.zzz.Target')
+    <class 'xxx.yyy.zzz.Target'>
+    """
+    module_path, object_name = split_object_path(path)
+    return getattr(importlib.import_module(module_path), object_name)
