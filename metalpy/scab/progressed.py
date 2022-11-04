@@ -11,6 +11,7 @@ class Progress(Mixin):
     def __init__(self, this: BaseSimulation):
         super().__init__(this)
         self.progressbar = tqdm.tqdm(total=len(this.survey.receiver_locations))
+        self.progressbar.clear()
         self.manual_update = False  # 指示是否有其它插件在手动更新进度条
 
         # TODO: 引入一套新的注解来支持不同的mixin方法注入
