@@ -36,7 +36,15 @@ class LazyClassFactory:
     def construct(self, **new_kwargs):
         kwargs = self.kwargs.copy()
         kwargs.update(new_kwargs)
-        return self.cls(*self.args, **kwargs)
+
+        checked_args = (arg.construct() if isinstance(arg, LazyClassFactory) else arg for arg in self.args)
+        checked_kwargs = kwargs
+        for key in checked_kwargs:
+            value = checked_kwargs[key]
+            if isinstance(value, LazyClassFactory):
+                checked_kwargs[key] = value.construct()
+
+        return self.cls(*checked_args, **checked_kwargs)
 
     def clone(self, **new_kwargs):
         kwargs = self.kwargs.copy()
