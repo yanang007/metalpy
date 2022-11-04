@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class LazyClassFactory:
     """用于劫持类的构造函数，实现延迟构造，常配合.injectors.hijack使用
     通过construct可以使用对应的类进行构造，new_kwargs指定用于替换或追加参数
@@ -8,36 +11,53 @@ class LazyClassFactory:
         self.args = list(args)  # 方便删除
         self.kwargs = kwargs
 
-    def find_param(self, predicate, remove=False):
-        ret = None
-        for i, arg in enumerate(self.args):
-            if predicate(i, arg):
-                ret = arg
-                if remove:
-                    del self.args[i]
-                break
+    def find_param(self, predicate, remove=False, repl=None, args=None, kwargs=None):
+        if args is None:
+            args = self.args
+        if kwargs is None:
+            kwargs = self.kwargs
 
-        if ret is None:
-            for key, kwarg in self.kwargs.items():
+        ret = None
+        if args != False:
+            for i, arg in enumerate(args):
+                if predicate(i, arg):
+                    ret = arg
+                    if repl is not None:
+                        args[i] = repl
+                    elif remove:
+                        del args[i]
+                    break
+
+        if ret is None and kwargs != False:
+            for key, kwarg in kwargs.items():
                 if predicate(key, kwarg):
                     ret = kwarg
-                    if remove:
-                        del self.kwargs[key]
+                    if repl is not None:
+                        kwargs[key] = repl
+                    elif remove:
+                        del kwargs[key]
                     break
 
         return ret
 
-    def find_param_by_type(self, type, remove=False):
-        return self.find_param(lambda k, v: isinstance(v, type), remove=remove)
+    def find_param_by_type(self, type, remove=False, repl=None, args=None, kwargs=None):
+        return self.find_param(lambda k, v: isinstance(v, type), remove=remove, args=args, kwargs=kwargs)
 
-    def find_param_by_name(self, name, remove=False):
-        return self.find_param(lambda k, v: k == name, remove=remove)
+    def find_param_by_name(self, name, remove=False, repl=None, args=None, kwargs=None):
+        return self.find_param(lambda k, v: k == name, remove=remove, args=args, kwargs=kwargs)
 
-    def construct(self, **new_kwargs):
+    def construct(self, replace_by_type: dict[type, Any] = None, **new_kwargs):
+        args = self.args.copy()
         kwargs = self.kwargs.copy()
+
+        if replace_by_type is not None:
+            for k in replace_by_type:
+                if isinstance(k, type):
+                    self.find_param_by_type(args, repl=replace_by_type[k])
+
         kwargs.update(new_kwargs)
 
-        checked_args = (arg.construct() if isinstance(arg, LazyClassFactory) else arg for arg in self.args)
+        checked_args = (arg.construct() if isinstance(arg, LazyClassFactory) else arg for arg in args)
         checked_kwargs = kwargs
         for key in checked_kwargs:
             value = checked_kwargs[key]
