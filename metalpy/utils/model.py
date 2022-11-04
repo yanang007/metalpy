@@ -7,15 +7,13 @@ import tqdm
 
 from .algos import QuickUnion, ConnectedTriangleSurfaces
 from .file import make_cache_file, make_cache_directory
+from .hash import hash_numpy_array
 from .obj_splitter import ObjSplitter
 from .time import Timer
 
 
 def hash_model(model, n_samples=10):
-    arr = model.points.ravel()
-    rand = np.random.RandomState(int(arr[len(arr) // 2]))
-
-    return hash((*rand.choice(arr, min(len(arr), n_samples), replace=False), ))
+    return hash_numpy_array(model.points, n_samples)
 
 
 def extract_model_list_bounds(model_list):

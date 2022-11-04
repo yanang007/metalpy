@@ -1,3 +1,4 @@
+import numpy as np
 
 
 # return the hash of the given string in string format
@@ -22,3 +23,10 @@ def hash_str(*objs):
         hash_value = hash_value // tablesize
 
     return hash_str
+
+
+def hash_numpy_array(arr: np.ndarray, n_samples=10):
+    arr = arr.ravel()
+    rand = np.random.RandomState(int(arr[len(arr) // 2]))
+
+    return hash((*rand.choice(arr, min(len(arr), n_samples), replace=False),))
