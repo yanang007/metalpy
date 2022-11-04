@@ -21,7 +21,7 @@ class Distributed(Patch):
     def apply(self):
         if 'SimPEG.data' in sys.modules:
             from SimPEG import data
-            self.hijack_cls_and_relative(data.Data, self.SimPEG_data_Data_wrapper)
+            self.hijack_cls_and_relative(data.Data, self._SimPEG_data_Data_wrapper)
 
         if 'SimPEG.potential_fields.magnetics.simulation' in sys.modules:
             import SimPEG.potential_fields.magnetics
@@ -83,14 +83,13 @@ class Distributed(Patch):
     def _parallel_wrapper(self, *args, cls, executor=None, **kwargs):
         return DistributedSimulation(self, cls, executor=executor, *args, **kwargs)
 
-    def _lazy_wrapper(self, *args, cls, **kwargs):
+    @staticmethod
+    def _lazy_wrapper(*args, cls, **kwargs):
         return LazyClassFactory(cls, *args, **kwargs)
 
     @staticmethod
-    def SimPEG_data_Data_wrapper(survey, dobs=None, cls=None, **kwargs):
-        from SimPEG import data
-        survey = survey.clone()
-        source_field = survey.find_param_by_type(LazyClassFactory, remove=True)
+    def _SimPEG_data_Data_wrapper(survey, dobs=None, cls=None, **kwargs):
+        source_field = survey.find_param_by_type(LazyClassFactory, remove=False)
 
         # TODO: 可改进的HACK
         # 因为这些类被劫持了，得到的会是LazyClassFactory，
@@ -98,11 +97,4 @@ class Distributed(Patch):
         repl_survey = reget_class(survey.cls)
         repl_sourcefield = reget_class(source_field.cls)
         with revert(repl_survey, repl_sourcefield):  # 临时还原这两个被替换的类才能正常完成构造
-            ret = data.Data(survey.construct(
-                source_field=source_field.construct()
-            ),
-                dobs=dobs,
-                **kwargs
-            )
-
-        return ret
+            return Distributed._lazy_wrapper(survey, cls=cls, dobs=dobs, **kwargs).construct()
