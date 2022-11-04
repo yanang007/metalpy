@@ -1,5 +1,3 @@
-import types
-
 import inspect
 
 from .injectors import extends, replaces
@@ -22,17 +20,10 @@ class MixinManager:
         methods = inspect.getmembers(obj, predicate=lambda x: inspect.ismethod(x) or inspect.isfunction(x))
         for name, method in methods:
             if name.startswith('__') or name in ['post_apply']:
+                # 跳过私有函数和mixin类构造过程的函数
                 continue
 
-            # TODO: 引入注解来标记是否需要替换，或者标记替换别的目标
-            # TODO: 标记是否需要保留原函数
-            if hasattr(target, name):
-                # 如果在目标存在同名方法则替换
-                method = replaces(target, name, keep_orig=False)(method)
-            else:
-                method = extends(target, name)(method)
-
-            obj.__dict__[name] = method
+            obj.__dict__[name] = self.bind_method(method, name=name)
 
         self._mixins[mixin_type] = obj
         obj.post_apply(target)
@@ -42,6 +33,20 @@ class MixinManager:
             return self._mixins[mixin_type]
         else:
             return NO_MIXIN
+
+    def bind_method(self, method, name=None):
+        # TODO: 引入注解来标记是否需要替换，或者标记替换别的目标
+        # TODO: 标记是否需要保留原函数
+        if name is None:
+            name = method.__name__
+        target = self.target
+        if hasattr(target, name):
+            # 如果在目标存在同名方法则替换
+            method = replaces(target, name, keep_orig=False)(method)
+        else:
+            method = extends(target, name)(method)
+
+        return method
 
 
 class Mixed(Patch):
