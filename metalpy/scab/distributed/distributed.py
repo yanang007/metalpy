@@ -1,7 +1,9 @@
 import sys
 
+from properties import Instance
+
 from metalpy.mepa import Executor
-from metalpy.mexin.injectors import hijacks, revert, get_object_by_path, get_class_path
+from metalpy.mexin.injectors import hijacks, revert, get_object_by_path, get_class_path, before, terminate_with
 from metalpy.mexin.lazy_class_delegate import LazyClassFactory
 from .distributed_simulation import DistributedSimulation
 from metalpy.mexin.patch import Patch
@@ -19,6 +21,8 @@ class Distributed(Patch):
         self.persisted_context = None
 
     def apply(self):
+        self.add_injector(before(Instance, 'validate'), self.disable_type_validates)
+
         if 'SimPEG.data' in sys.modules:
             from SimPEG import data
             self.hijack_cls_and_relative(data.Data, self._SimPEG_data_Data_wrapper)
@@ -98,3 +102,10 @@ class Distributed(Patch):
         repl_sourcefield = reget_class(source_field.cls)
         with revert(repl_survey, repl_sourcefield):  # 临时还原这两个被替换的类才能正常完成构造
             return Distributed._lazy_wrapper(survey, cls=cls, dobs=dobs, **kwargs).construct()
+
+    @staticmethod
+    def disable_type_validates(self, instance, value):
+        if isinstance(value, DistributedSimulation):
+            return terminate_with(value)
+        else:
+            return None
