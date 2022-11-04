@@ -77,7 +77,9 @@ class Patch(ABC):
 
     @property
     def priority(self):
-        return 0
+        # -1 专属于Mixed的优先级，用于注入Mixin系统
+        # TODO: 可能可以改为require/after类型的依赖图？
+        return 225
 
     @property
     def context(self):
