@@ -56,7 +56,7 @@ class TemporaryReversion:
             repl.repl_executor(replacement)
 
 
-def revert(*repls):
+def reverted(*repls):
     """临时还原某些替换
     例如类名劫持，有些类在调用基类构造函数时会采用类似于super(<class-name>, self).__init__(...)的形式，
     导致在被劫持状态下无法正常构造，这时需要进行临时的revert操作
@@ -139,7 +139,7 @@ class hijacks(RecoverableInjector):
             # TODO (low-priority): 也许可以通过修改super函数实现
             def reverted_wrapper(*args, **kwargs):
                 # 用于保证类名在被劫持状态下仍然能进行构造
-                with revert(wrapper):
+                with reverted(wrapper):
                     ret = func(*args, **kwargs)
                 return ret
             repl = reverted_wrapper
