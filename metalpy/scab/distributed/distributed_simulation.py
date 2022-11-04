@@ -1,3 +1,5 @@
+import copy
+import os
 import sys
 
 import SimPEG
@@ -6,12 +8,14 @@ import numpy as np
 from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
 
-from metalpy.mepa import Executor, LinearExecutor
+from metalpy.mepa import Executor
 from metalpy.mexin import LazyClassFactory, PatchContext
-from metalpy.mexin.injectors import is_or_is_replacement
+from metalpy.mexin.injectors import is_or_is_replacement, reverted
+from .utils import reget_class
 
 from ..simpeg_patch_context import simpeg_patched
 from .policies import Distributable, NotDistributable
+from ...utils.type import pop_or_default
 
 
 class DistributedSimulation(LazyClassFactory):
@@ -57,20 +61,26 @@ class DistributedSimulation(LazyClassFactory):
             raise ValueError('Error: source field must be a LazyClassFactory. '
                              'Please check if the patch system is working correctly.')
 
-        if not is_or_is_replacement(SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral, simulation_class):
+        if not is_or_is_replacement(SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral,
+                                    simulation_class):
             print('Warning: Distributed patch is only tested for magnetics.simulation.Simulation3DIntegral')
 
         # 针对magnetics.simulation.Simulation3DIntegral实现
         # TODO: 引入来支持其它Simulation，TaskDividePolicy?
         receiver_list = source_field.find_param(lambda k, v: k.startswith('receiver_'), remove=True)
-        receiver_locations = []
 
+        # 和外部共用receiver_list，防止被后文修改
+        self.simulation = self.build_simulation(survey, source_field, receiver_list)
+
+        # 复制receiver_list，防止影响到外部代码
+        receiver_list = [copy.deepcopy(receiver) for receiver in receiver_list]
+        receiver_locations = []
         for receiver in receiver_list:
             receiver_locations.append(receiver.locations)
             receiver.locations = receiver.locations[0]  # 占位符，用来越过receiver的类型检测
 
         self.simulation_class = simulation_class
-        self.survey = survey
+        self.survey_factory = survey
         self.source_field = source_field
         self.receiver_list = receiver_list
         self.locations_list = receiver_locations
@@ -78,6 +88,9 @@ class DistributedSimulation(LazyClassFactory):
         self.executor = executor
 
         self.parallelized_patch = patch
+
+        self.store_sensitivities = pop_or_default(self.kwargs, 'store_sensitivities', 'ram')
+        self.sensitivity_path = pop_or_default(self.kwargs, 'sensitivity_path', "./sensitivity/")
 
     @staticmethod
     def auto_decompress_simulation(sim, ind_future):
@@ -109,13 +122,13 @@ class DistributedSimulation(LazyClassFactory):
         return sim_delegate, model
 
     @staticmethod
-    def worker(simulation_delegate,
-               survey_delegate,
-               source_field_delegate,
-               receiver_list_container,
-               locations_list,
-               model,
-               patches):
+    def linear_operator_worker(simulation_delegate,
+                               survey_delegate,
+                               source_field_delegate,
+                               receiver_list_container,
+                               locations_list,
+                               model,
+                               patches):
         for receiver in receiver_list_container:
             receiver.locations = locations_list.pop(0)
 
@@ -125,16 +138,30 @@ class DistributedSimulation(LazyClassFactory):
                     receiver_list=receiver_list_container
                 ))
 
-            simulation = simulation_delegate.construct(survey=survey)
+            simulation = simulation_delegate.construct(survey=survey, model=model)
 
-        return simulation.dpred(model)
+        return simulation.linear_operator()
 
-    def dpred(self, model):
+    def linear_operator(self, this):
+        if self.store_sensitivities == 'disk':
+            sens_name = self.sensitivity_path + "sensitivity.npy"
+            if os.path.exists(sens_name):
+                # do not pull array completely into ram, just need to check the size
+                kernel = np.load(sens_name, mmap_mode="r")
+                nD = this.survey.nD
+                nC = this.nC
+                if kernel.shape == (nD, nC):
+                    print(f"Found sensitivity file at {sens_name} with expected shape")
+                    kernel = np.asarray(kernel)
+                    return kernel
+                else:
+                    print(f"Warning: found sensitivity file at {sens_name} with wrong shape, ignoring it")
+
         if PatchContext.lock.locked():
-            raise AssertionError('Error: dpred must be called outside of PatchContext.')
+            raise AssertionError('Error: linear_operator must be called outside of PatchContext.')
 
         simulation_delegate = self.clone()  # 使用clone创建一个lazy构造器
-
+        model = this.model
         if not self.executor.is_local():
             simulation_delegate, model = self.compress_model(simulation_delegate, model)
 
@@ -146,9 +173,9 @@ class DistributedSimulation(LazyClassFactory):
                        if self.get_patch_policy(patch).should_distribute_to(dest_worker)]
 
             future = self.executor.submit(
-                self.worker, worker=dest_worker,
+                self.linear_operator_worker, worker=dest_worker,
                 simulation_delegate=simulation_delegate,
-                survey_delegate=self.survey,
+                survey_delegate=self.survey_factory,
                 source_field_delegate=self.source_field,
                 receiver_list_container=self.receiver_list,
                 locations_list=receiver_tasks.assign(dest_worker),
@@ -157,9 +184,47 @@ class DistributedSimulation(LazyClassFactory):
             )
             futures.append(future)
 
-        ret = self.executor.gather(futures)
-        ret = np.concatenate(ret)
-        return ret
+        segments = self.executor.gather(futures)
+        kernel = np.concatenate(segments)
+
+        if self.store_sensitivities == "disk":
+            print(f"writing sensitivity to {sens_name}")
+            os.makedirs(self.sensitivity_path, exist_ok=True)
+            np.save(sens_name, kernel)
+
+        return kernel
+
+    def dpred(self, model=None, f=None):
+        return self.simulation.dpred(model, f)
+
+    @property
+    def model(self):
+        return self.simulation.model
+
+    @property
+    def survey(self):
+        return self.simulation.survey
+
+    def getJtJdiag(self, m, W=None):
+        return self.simulation.getJtJdiag(m, W)
+
+    def fields(self, model):
+        return self.simulation.fields(model)
+
+    def Jtvec(self, m, v, f=None):
+        return self.simulation.Jtvec(m, v, f=f)
+
+    def Jvec(self, m, v, f=None):
+        return self.simulation.Jvec(m, v, f=f)
+
+    def Jtvec_approx(self, m, v, f=None):
+        return self.simulation.Jtvec_approx(m, v, f=f)
+
+    def Jvec_approx(self, m, v, f=None):
+        return self.simulation.Jvec_approx(m, v, f=f)
+
+    def residual(self, m, dobs, f=None):
+        return self.simulation.residual(m, dobs, f=f)
 
     @staticmethod
     def get_patch_policy(patch):
@@ -170,3 +235,13 @@ class DistributedSimulation(LazyClassFactory):
 
     def get_patches(self):
         return self.parallelized_patch.persisted_context.get_patches()
+
+    def build_simulation(self, survey, source_field, receiver_list):
+        r = reget_class(survey.cls), reget_class(source_field.cls),
+        with reverted(*r):
+            ret = self.construct(
+                survey=survey.construct(
+                    source_field=source_field.construct(
+                        receiver_list=receiver_list)))
+        ret.mixins.bind_method(self.linear_operator)
+        return ret

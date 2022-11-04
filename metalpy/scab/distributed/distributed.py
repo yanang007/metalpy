@@ -1,5 +1,6 @@
 import sys
 
+from SimPEG.simulation import BaseSimulation
 from properties import Instance
 
 from metalpy.mepa import Executor
@@ -7,11 +8,8 @@ from metalpy.mexin.injectors import hijacks, reverted, before, terminate_with
 from metalpy.mexin.lazy_class_delegate import LazyClassFactory
 from .distributed_simulation import DistributedSimulation
 from metalpy.mexin.patch import Patch
-
-
-def reget_class(cls):
-    """用于获取被劫持的cls对应的Replacement"""
-    return get_object_by_path(get_class_path(cls))
+from .utils import reget_class
+from ...mexin import Mixin
 
 
 class Distributed(Patch):
@@ -21,6 +19,7 @@ class Distributed(Patch):
         self.persisted_context = None
 
     def apply(self):
+        self.add_mixin(BaseSimulation, Mixin)  # 保证BaseSimulation绑定mixin系统供DistributedSimulation使用
         self.add_injector(before(Instance, 'validate'), self.disable_type_validates)
 
         if 'SimPEG.data' in sys.modules:
