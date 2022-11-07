@@ -42,15 +42,28 @@ class Shape3D(ABC):
     def plot(self, ax, color):
         raise NotImplementedError()
 
-    def apply(self, trans: Transform):
+    def apply(self, trans: Transform, inplace=False):
         """逻辑上对空间体位置进行变换，目前通过对网格点进行逆变换实现
         :param trans: 需要应用的变换
-        :return:
+        :param inplace: 操作是否应用在当前实例上
+        :return: 当inplace为True，返回当前实例，否则返回一个变换后的新对象
         """
-        self.transforms.add(trans)
+        if inplace:
+            ret = self
+        else:
+            ret = self.clone()
 
-    def translate(self, x, y, z):
-        self.apply(Translation(-x, -y, -z))
+        ret.transforms.add(trans)
+        return ret
 
-    def rotate(self, y, a, b, degrees=True, seq='xyz'):
-        self.apply(Rotation(-y, -a, -b, degrees=degrees, seq=seq))
+    def translate(self, x, y, z, inplace=False):
+        return self.apply(Translation(-x, -y, -z), inplace=inplace)
+
+    def rotate(self, y, a, b, degrees=True, seq='xyz', inplace=False):
+        return self.apply(Rotation(-y, -a, -b, degrees=degrees, seq=seq), inplace=inplace)
+
+    def translated(self, x, y, z, inplace=False):
+        return self.translate(x, y, z, inplace=inplace)
+
+    def rotated(self, y, a, b, degrees=True, seq='xyz', inplace=False):
+        return self.rotated(y, a, b, degrees=degrees, seq=seq, inplace=inplace)
