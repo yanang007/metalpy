@@ -2,17 +2,14 @@ from random import random
 
 import numpy as np
 
+from ..scab.utils.misc import define_inducing_field as new_define_inducing_field
 
-def define_inducing_field(strength, inclination, declination):
-    """
-    :param strength: 场强
-    :param inclination: 磁倾角
-    :param declination: 磁偏角
-    :return:
-    """
-    inducing_field = (strength, inclination, declination)
 
-    return inducing_field
+def define_inducing_field(s, i, d):
+    """
+    Deprecated. Use metalpy.scab.utils.misc.define_inducing_field instead
+    """
+    return new_define_inducing_field(s, i, d)
 
 
 def plot_opaque_cube(ax, x=10, y=20, z=30, dx=40, dy=50, dz=60, alpha=1, **kwargs):
@@ -32,6 +29,7 @@ def plot_opaque_cube(ax, x=10, y=20, z=30, dx=40, dy=50, dz=60, alpha=1, **kwarg
     xx2, zz2 = np.meshgrid(xx, zz)
     ax.plot_surface(xx2, np.full_like(yy2, y), zz2, alpha=alpha, **kwargs)
     ax.plot_surface(xx2, np.full_like(yy2, y + dy), zz2, alpha=alpha, **kwargs)
+
 
 def plot_linear_cube(ax, x, y, z, dx, dy, dz, color='red'):
     xx = [x, x, x + dx, x + dx, x]
