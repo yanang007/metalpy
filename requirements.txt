@@ -1,4 +1,4 @@
-SimPEG
+SimPEG < 0.18.0
 discretize
 vtk
 dask
