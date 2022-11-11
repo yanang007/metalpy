@@ -7,6 +7,7 @@ import blosc2
 import numpy as np
 from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
+from properties.utils import undefined
 
 from metalpy.mepa import Executor
 from metalpy.mexin import LazyClassFactory, PatchContext
@@ -15,7 +16,7 @@ from .utils import reget_class
 
 from ..simpeg_patch_context import simpeg_patched
 from .policies import Distributable, NotDistributable
-from ...utils.type import pop_or_default
+from ...utils.type import pop_or_default, not_none_or_default
 
 
 class DistributedSimulation(LazyClassFactory):
@@ -129,6 +130,9 @@ class DistributedSimulation(LazyClassFactory):
                                locations_list,
                                model,
                                patches):
+        # model property强制要求为undefined或numpy数组，不可为None
+        model = not_none_or_default(model, undefined)
+
         for receiver in receiver_list_container:
             receiver.locations = locations_list.pop(0)
 
@@ -143,6 +147,8 @@ class DistributedSimulation(LazyClassFactory):
         return simulation.linear_operator()
 
     def linear_operator(self, this):
+        """LinearSimulation
+        """
         if self.store_sensitivities == 'disk':
             sens_name = self.sensitivity_path + "sensitivity.npy"
             if os.path.exists(sens_name):
@@ -195,36 +201,74 @@ class DistributedSimulation(LazyClassFactory):
         return kernel
 
     def dpred(self, model=None, f=None):
+        """BaseSimulation
+        """
         return self.simulation.dpred(model, f)
 
     @property
     def model(self):
+        """LinearSimulation
+        """
         return self.simulation.model
 
     @property
     def survey(self):
+        """BaseSimulation
+        """
         return self.simulation.survey
 
     def getJtJdiag(self, m, W=None):
+        """Simulation3DIntegral / Simulations from electromagnetics
+        """
         return self.simulation.getJtJdiag(m, W)
 
     def fields(self, model):
+        """BaseSimulation
+        """
         return self.simulation.fields(model)
 
     def Jtvec(self, m, v, f=None):
+        """BaseSimulation
+        """
         return self.simulation.Jtvec(m, v, f=f)
 
     def Jvec(self, m, v, f=None):
+        """BaseSimulation
+        """
         return self.simulation.Jvec(m, v, f=f)
 
     def Jtvec_approx(self, m, v, f=None):
+        """BaseSimulation
+        """
         return self.simulation.Jtvec_approx(m, v, f=f)
 
     def Jvec_approx(self, m, v, f=None):
+        """BaseSimulation
+        """
         return self.simulation.Jvec_approx(m, v, f=f)
 
     def residual(self, m, dobs, f=None):
+        """BaseSimulation
+        """
         return self.simulation.residual(m, dobs, f=f)
+
+    @property
+    def G(self):
+        """LinearSimulation
+        """
+        return self.simulation.G
+
+    @G.setter
+    def G(self, value):
+        """LinearSimulation
+        """
+        self.simulation.G = value
+
+    @property
+    def nC(self):
+        """BasePFSimulation
+        """
+        return self.simulation.nC
 
     @staticmethod
     def get_patch_policy(patch):
