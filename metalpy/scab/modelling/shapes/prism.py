@@ -62,9 +62,9 @@ class Prism(Shape3D):
         :param z1: 顶面高度
         """
         super().__init__()
-        self.pts = tuple([tuple(pt) for pt in pts])
-        self.z0 = z0
-        self.z1 = z1
+        self.pts = np.asarray(pts)
+        self.z0 = min(z0, z1)
+        self.z1 = max(z0, z1)
 
     def do_place(self, mesh_cell_centers, worker_id):
         # 优化: 只判断在xyz三轴边界框内的点
@@ -97,10 +97,17 @@ class Prism(Shape3D):
         return indices
 
     def __hash__(self):
-        return hash((*self.pts, self.z0, self.z1))
+        return hash((*self.pts.ravel(), self.z0, self.z1))
 
     def do_clone(self):
         return Prism(self.pts, self.z0, self.z1)
 
     def plot(self, ax, color):
         pass
+
+    @property
+    def local_bounds(self):
+        return np.c_[
+            np.r_[self.pts.min(axis=0), self.z0],
+            np.r_[self.pts.max(axis=0), self.z1]
+        ].ravel()

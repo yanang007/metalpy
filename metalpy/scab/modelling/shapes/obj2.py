@@ -130,9 +130,6 @@ class Obj2(Shape3D):
 
             self.models = models
 
-    def bounds(self):
-        return extract_model_list_bounds(self.models)
-
     def place_impl(self, model, mesh_cell_centers, worker_id):
         poly = pv.PolyData(mesh_cell_centers)
         mesh = pv.UnstructuredGrid(poly.cast_to_unstructured_grid())
@@ -181,3 +178,7 @@ class Obj2(Shape3D):
 
     def plot(self, ax, color):
         pass
+
+    @property
+    def local_bounds(self):
+        return extract_model_list_bounds(self.models)

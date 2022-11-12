@@ -9,7 +9,10 @@ class Translation(Transform):
         self.delta = np.asarray([x, y, z])
 
     def transform(self, mesh):
-        return mesh + self.delta
+        return np.asarray(mesh) + self.delta
+
+    def inverse_transform(self, mesh):
+        return np.asarray(mesh) - self.delta
 
     def clone(self):
         return Translation(*self.delta)

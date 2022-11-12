@@ -14,6 +14,11 @@ class CompositeTransform(Transform):
             mesh = trans.transform(mesh)
         return mesh
 
+    def inverse_transform(self, mesh):
+        for trans in reversed(self.transforms):
+            mesh = trans.inverse_transform(mesh)
+        return mesh
+
     def clone(self):
         ret = CompositeTransform()
         for trans in self.transforms:

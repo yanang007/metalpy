@@ -80,3 +80,7 @@ class Ellipsoid(Shape3D):
 
     def plot(self, ax, color):
         pass
+
+    @property
+    def local_bounds(self):
+        return np.vstack(-self.radii, self.radii).T.ravel()

@@ -10,5 +10,9 @@ class Transform(ABC):
         return mesh
 
     @abstractmethod
+    def inverse_transform(self, mesh):
+        return mesh
+
+    @abstractmethod
     def clone(self):
         return Transform()

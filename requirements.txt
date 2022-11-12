@@ -8,6 +8,7 @@ numpy
 tqdm
 pywin32  # 在低版本pip时可能需要手动进行post install，参见pywin32的pypi主页
 pyevtk
+pytest
 scipy
 psutil
 matplotlib

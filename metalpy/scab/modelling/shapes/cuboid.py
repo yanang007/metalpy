@@ -63,3 +63,7 @@ class Cuboid(Shape3D):
 
     def plot(self, ax, color):
         plot_opaque_cube(ax, *self.corner, *self.lengths, color=color)
+
+    @property
+    def local_bounds(self):
+        return np.vstack(self.corner, self.corner + self.lengths).T.ravel()

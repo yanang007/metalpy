@@ -9,7 +9,7 @@ def is_abs_distance_in(arr, x0, r):
 
 class Tunnel(Shape3D):
     def __init__(self, p0, r0, r1, L):
-        """
+        """定义一个起始点在x0，内外圆半径r0和r1，向x方向延申长度为L的空心圆柱环
         :param p0: 起始点，隧道的左中位置
         :param r0: 内圆半径
         :param r1: 外圆半径
@@ -48,3 +48,14 @@ class Tunnel(Shape3D):
 
     def plot(self, ax, color):
         pass
+
+    @property
+    def local_bounds(self):
+        x0, y0, z0 = self.p0
+        r1 = self.r1
+        L = self.L
+        return np.r_[
+            x0, L,
+            y0 - r1, y0 + r1,
+            z0 - r1, z0 + r1,
+        ].ravel()
