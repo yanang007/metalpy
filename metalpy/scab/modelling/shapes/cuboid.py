@@ -55,7 +55,7 @@ class Cuboid(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         return hash((*self.corner, *self.lengths))
 
     def do_clone(self):

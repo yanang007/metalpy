@@ -28,8 +28,18 @@ class Shape3D(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def __hash__(self):
+    def do_hash(self):
+        """哈希函数，返回当前shape的哈希，
+        由基类的__hash__调用，并混合transforms的哈希作为shape的完整哈希值返回
+
+        Returns
+        -------
+            int, 当前shape的哈希值
+        """
         raise NotImplementedError()
+
+    def __hash__(self):
+        return hash((self.do_hash(), hash(self.transforms)))
 
     def clone(self):
         ret = self.do_clone()

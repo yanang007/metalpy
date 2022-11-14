@@ -72,7 +72,7 @@ class Ellipsoid(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         return hash((*self.radii,))
 
     def do_clone(self):

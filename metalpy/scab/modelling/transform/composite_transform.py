@@ -4,7 +4,7 @@ from .transform import Transform
 class CompositeTransform(Transform):
     def __init__(self):
         super().__init__()
-        self.transforms = []
+        self.transforms: list[Transform] = []
 
     def add(self, transform):
         self.transforms.append(transform)
@@ -25,3 +25,6 @@ class CompositeTransform(Transform):
             ret.add(trans)
 
         return ret
+
+    def __hash__(self):
+        return hash((*self.transforms,))

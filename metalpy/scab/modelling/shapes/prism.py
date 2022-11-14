@@ -96,7 +96,7 @@ class Prism(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         return hash((*self.pts.ravel(), self.z0, self.z1))
 
     def do_clone(self):

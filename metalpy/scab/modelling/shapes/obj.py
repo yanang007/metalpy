@@ -26,7 +26,7 @@ class Obj(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         return hash((*self.model.flatten(), *self.model.shape, *self.grid_size))
 
     def do_clone(self):

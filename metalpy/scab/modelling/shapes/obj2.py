@@ -163,7 +163,7 @@ class Obj2(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         n_samples = np.max((2, 10 // len(self.models)))
         surface_range = self.surface_range if self.surface_range is not None else (None,)
         return hash((*(hash_model(m, n_samples) for m in self.models),

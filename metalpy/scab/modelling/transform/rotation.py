@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 from scipy.spatial.transform import Rotation as R
 from .transform import Transform
 
@@ -19,3 +18,6 @@ class Rotation(Transform):
 
     def clone(self):
         return Rotation(*self.params)
+
+    def __hash__(self):
+        return hash(self.params)

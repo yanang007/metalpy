@@ -16,3 +16,7 @@ class Transform(ABC):
     @abstractmethod
     def clone(self):
         return Transform()
+
+    @abstractmethod
+    def __hash__(self):
+        raise NotImplementedError()

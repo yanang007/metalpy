@@ -40,7 +40,7 @@ class Tunnel(Shape3D):
 
         return indices
 
-    def __hash__(self):
+    def do_hash(self):
         return hash((*self.p0, self.r0, self.r1, self.L))
 
     def do_clone(self):

@@ -16,3 +16,6 @@ class Translation(Transform):
 
     def clone(self):
         return Translation(*self.delta)
+
+    def __hash__(self):
+        return hash(tuple(self.delta))
