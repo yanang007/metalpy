@@ -19,6 +19,8 @@ def ensure_as_iterable(arg, excludes=None):
     if not isinstance(arg, Iterable):
         return [arg]
 
+    return arg
+
 
 def get_or_default(dictionary, key, _default=None, remove=False):
     if key in dictionary:
