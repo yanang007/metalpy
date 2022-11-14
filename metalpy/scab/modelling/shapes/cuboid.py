@@ -66,4 +66,4 @@ class Cuboid(Shape3D):
 
     @property
     def local_bounds(self):
-        return np.vstack(self.corner, self.corner + self.lengths).T.ravel()
+        return np.c_[self.corner, self.corner + self.lengths].ravel()
