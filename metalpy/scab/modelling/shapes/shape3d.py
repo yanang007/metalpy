@@ -123,3 +123,15 @@ class Shape3D(ABC):
 
     def rotated(self, y, a, b, degrees=True, seq='xyz', inplace=True):
         return self.rotate(y, a, b, degrees=degrees, seq=seq, inplace=inplace)
+
+
+def bounding_box_of(shapes: list[Shape3D]):
+    bounds = None
+    for m in shapes:
+        if bounds is None:
+            bounds = np.asarray(m.bounds)
+            continue
+        bounds[1::2] = np.max([bounds[1::2], m.bounds[1::2]], axis=0)
+        bounds[0::2] = np.min([bounds[0::2], m.bounds[0::2]], axis=0)
+
+    return bounds
