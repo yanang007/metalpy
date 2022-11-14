@@ -16,7 +16,7 @@ from .utils import reget_class
 
 from ..simpeg_patch_context import simpeg_patched
 from .policies import Distributable, NotDistributable
-from ...utils.type import pop_or_default, not_none_or_default
+from ...utils.type import pop_or_default, not_none_or_default, get_or_default
 
 
 class DistributedSimulation(LazyClassFactory):
@@ -90,7 +90,12 @@ class DistributedSimulation(LazyClassFactory):
 
         self.parallelized_patch = patch
 
-        self.store_sensitivities = pop_or_default(self.kwargs, 'store_sensitivities', 'ram')
+        # 在构造完本地代理类后劫持分派类的store_sensitivities参数，如果为disk，则改为ram，防止在远程端产生不必要的cache和路径冲突
+        self.store_sensitivities = get_or_default(self.kwargs, 'store_sensitivities', 'ram')
+        if self.store_sensitivities == 'disk':
+            self.kwargs['store_sensitivities'] = 'ram'
+        else:
+            self.kwargs['store_sensitivities'] = self.store_sensitivities
         self.sensitivity_path = pop_or_default(self.kwargs, 'sensitivity_path', "./sensitivity/")
 
     @staticmethod
