@@ -83,4 +83,4 @@ class Ellipsoid(Shape3D):
 
     @property
     def local_bounds(self):
-        return np.vstack(-self.radii, self.radii).T.ravel()
+        return np.c_[-self.radii, self.radii].ravel()
