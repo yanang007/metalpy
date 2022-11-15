@@ -1,4 +1,5 @@
 from concurrent.futures import ProcessPoolExecutor, wait, Future
+from loky import get_reusable_executor
 
 import psutil
 
@@ -16,7 +17,7 @@ class ProcessExecutor(Executor):
         if n_units is None:
             n_units = psutil.cpu_count(logical=False)
 
-        self.pool = ProcessPoolExecutor(max_workers=n_units)
+        self.pool = get_reusable_executor(max_workers=n_units, kill_workers=True)
         self.workers = [Worker(f'proc-{i}', 1) for i in range(n_units)]
         self.n_units = n_units
 
