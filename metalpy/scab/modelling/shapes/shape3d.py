@@ -10,12 +10,19 @@ class Shape3D(ABC):
         self.transforms = CompositeTransform()
 
     def place(self, mesh_cell_centers, worker_id):
-        """
-        注意：调用者会占用tqdm的position=0位置，如果继承的place方法内有自己定义的进度条，
-        需要特别指定position为其他位置
-        :param mesh_cell_centers: 3维网格中心点坐标
-        :param worker_id: worker的id，一般用于指示是否显示进度条
-        :return: mask[n_cells]，指示每个网格是否有效的
+        """计算模型体所占用的网格
+
+        Parameters
+        ----------
+        mesh_cell_centers
+            3维网格中心点坐标
+        worker_id
+            worker的id，一般用于指示是否显示进度条
+
+        Returns
+        -------
+            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]
+            指示对应网格位置是否有效或有效的程度， 0 代表非活动网格
         """
         mesh = self.before_place(mesh_cell_centers, worker_id)
         return self.do_place(mesh, worker_id)
@@ -25,6 +32,26 @@ class Shape3D(ABC):
 
     @abstractmethod
     def do_place(self, mesh_cell_centers, worker_id):
+        """计算模型体所占用的网格的实现函数，所有Shape3D的子类需要重写该函数
+
+        Parameters
+        ----------
+        mesh_cell_centers
+            3维网格中心点坐标
+        worker_id
+            worker的id，一般用于指示是否显示进度条
+
+        Returns
+        -------
+            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]
+            指示对应网格位置是否有效或有效的程度，0代表非活动网格
+
+        Notes
+        -----
+            注意：调用者会占用tqdm的position=0位置，如果继承的do_place方法内有自己定义的进度条，需要特别指定position为其他位置
+
+            在Scene.build_mesh_worker中假定了0代表非活动网格，不参与模型间重叠部分的计算，请避免将0作为一个有意义的值输出
+        """
         raise NotImplementedError()
 
     @abstractmethod
