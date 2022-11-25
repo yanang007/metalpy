@@ -25,8 +25,17 @@ def hash_str(*objs):
     return hash_str
 
 
-def hash_numpy_array(arr: np.ndarray, n_samples=10):
-    arr = arr.ravel()
-    rand = np.random.RandomState(int(arr[len(arr) // 2]))
+def hash_numpy_array(arr: np.ndarray, n_samples=10, sparse=False):
+    if not sparse:
+        arr = arr.ravel()
+        rand = np.random.RandomState(int(arr[len(arr) // 2]))
 
-    return hash((*rand.choice(arr, min(len(arr), n_samples), replace=False),))
+        # 加入shape作为参数防止类似np.ones(100)和np.ones(1000)的冲突
+        return hash((arr.shape, *rand.choice(arr, min(len(arr), n_samples), replace=False),))
+    else:
+        # 稀疏的数组可能会在采样时碰撞概率较大
+        # 但是涉及压缩操作可能会导致效率一定程度上降低
+        import blosc2
+        packed = blosc2.pack_array2(arr)
+
+        return hash(packed)
