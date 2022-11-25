@@ -4,13 +4,25 @@ import numpy as np
 import tqdm
 
 from metalpy.mepa import LinearExecutor
-from metalpy.scab.modelling.object import Object
-from metalpy.scab.modelling.shapes import Shape3D
+from .object import Object
+from .shapes import Shape3D
 
 
 class Scene:
     def __init__(self):
-        self.objects = []
+        self.objects: list[Object] = []
+
+    @staticmethod
+    def of(shapes: list[Shape3D], values: Union[Any, dict, list[Any], list[dict], None] = None):
+        ret = Scene()
+        if values is None:
+            values = {}
+        if not isinstance(values, list):
+            values = [values] * len(shapes)
+        for shape, value in zip(shapes, values):
+            ret.append(shape, value)
+
+        return ret
 
     def append(self, shape: Shape3D, values: Union[dict[str, Any], Any]):
         """添加三维几何体
@@ -28,14 +40,14 @@ class Scene:
     @staticmethod
     def build_mesh_worker(objects: list[Object], mesh, show_modeling_progress, worker_id):
         values = {}
-        for object in tqdm.tqdm(objects, position=0, leave=False, ncols=80) if show_modeling_progress else objects:
-            shape = object.shape
+        for obj in tqdm.tqdm(objects, position=0, leave=False, ncols=80) if show_modeling_progress else objects:
+            shape = obj.shape
 
             # place的结果应该为布尔数组或范围为[0, 1]的数组，指示对应网格位置是否有效或有效程度
             ind = shape.place(mesh, worker_id)
             current_mask = ind if ind.dtype == bool else ind != 0  # TODO: 考察是否有必要视0为非活动网格
 
-            for key, current_value in object.items():
+            for key, current_value in obj.items():
                 if ind.dtype == bool:
                     current_layer = np.zeros_like(ind)
                     current_layer[ind] = current_value
@@ -50,7 +62,7 @@ class Scene:
                     overlapping_mask = filled_ind & current_mask
                     non_overlapping_mask = current_mask ^ overlapping_mask
 
-                    prev_layer[overlapping_mask] = object.mix(
+                    prev_layer[overlapping_mask] = obj.mix(
                         prev_layer[overlapping_mask],
                         current_layer[overlapping_mask]
                     )
@@ -110,3 +122,15 @@ class Scene:
     def __iter__(self):
         for obj in self.objects:
             yield obj
+
+    def shapes(self):
+        for obj in self.objects:
+            yield obj.shape
+
+    def to_multiblock(self):
+        import pyvista as pv
+        ret = pv.MultiBlock()
+        for shape in self.shapes():
+            ret.append(shape.to_pyvista_dataset())
+
+        return ret
