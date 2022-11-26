@@ -84,3 +84,8 @@ class Ellipsoid(Shape3D):
     @property
     def local_bounds(self):
         return np.c_[-self.radii, self.radii].ravel()
+
+    def to_local_polydata(self):
+        import pyvista as pv
+
+        return pv.ParametricEllipsoid(*self.radii)

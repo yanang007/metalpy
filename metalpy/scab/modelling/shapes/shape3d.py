@@ -95,6 +95,7 @@ class Shape3D(ABC):
             因此继承类应当实现 to_local_polydata
         """
         import pyvista as pv
+
         ret: pv.PolyData = self.to_local_polydata()
         pts = self.transforms.transform(ret.points)
         ret.points = pts

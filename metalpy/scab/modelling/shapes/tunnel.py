@@ -59,3 +59,31 @@ class Tunnel(Shape3D):
             y0 - r1, y0 + r1,
             z0 - r1, z0 + r1,
         ].ravel()
+
+    def to_local_polydata(self):
+        import pyvista as pv
+
+        resolution = 100
+        a = np.linspace(0, 2 * np.pi, resolution + 1)[:-1]  # 2π位置和0位置重复，去掉最后一个
+        x0, y0, z0 = self.p0
+        r0, r1 = self.r0, self.r1
+        L = self.L
+        x = np.r_[x0, x0 + L]
+        y = np.r_[y0 + r0 * np.cos(a), y0 + r1 * np.cos(a)]
+        z = np.r_[z0 + r0 * np.sin(a), z0 + r1 * np.sin(a)]
+
+        # array(resolution, ) [<x0内圆...>, <x0外圆...>, <x0+L内圆...>, <x0+L外圆...>]
+        xs = x.repeat(2 * resolution)
+        ys = np.tile(y, 2)
+        zs = np.tile(z, 2)
+
+        indices = np.arange(xs.shape[0]).reshape([4, -1])
+        edge_counts = np.ones(resolution, dtype=np.integer) * 4
+        bottom_faces = np.c_[edge_counts, indices[0], indices[1], np.roll(indices[1], -1), np.roll(indices[0], -1)]
+        top_faces = np.c_[edge_counts, indices[2], indices[3], np.roll(indices[3], -1), np.roll(indices[2], -1)]
+        outer_side_faces = np.c_[edge_counts, indices[1], indices[3], np.roll(indices[3], -1), np.roll(indices[1], -1)]
+        inner_side_faces = np.c_[edge_counts, indices[0], indices[2], np.roll(indices[2], -1), np.roll(indices[0], -1)]
+
+        faces = np.c_[bottom_faces, top_faces, outer_side_faces, inner_side_faces].ravel()
+
+        return pv.PolyData(np.c_[xs, ys, zs], faces=faces)

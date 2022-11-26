@@ -67,3 +67,7 @@ class Cuboid(Shape3D):
     @property
     def local_bounds(self):
         return np.c_[self.corner, self.corner + self.lengths].ravel()
+
+    def to_local_polydata(self):
+        import pyvista as pv
+        return pv.Cube(bounds=self.local_bounds)

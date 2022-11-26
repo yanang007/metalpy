@@ -182,3 +182,6 @@ class Obj2(Shape3D):
     @property
     def local_bounds(self):
         return extract_model_list_bounds(self.models)
+
+    def to_local_polydata(self):
+        return pv.merge(self.models, merge_points=False).copy(deep=True)

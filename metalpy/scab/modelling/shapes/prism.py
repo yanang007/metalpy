@@ -111,3 +111,26 @@ class Prism(Shape3D):
             np.r_[self.pts.min(axis=0), self.z0],
             np.r_[self.pts.max(axis=0), self.z1]
         ].ravel()
+
+    def to_local_polydata(self):
+        import pyvista as pv
+
+        pts = self.pts
+        z0, z1 = self.z0, self.z1
+        n_pts = len(pts)
+        n_vertices = 2 * len(pts)
+        vh = pts.repeat(2, axis=0)
+        vz = np.asarray([[z0, z1]]).repeat(n_pts, axis=0).ravel()
+        vertices = np.c_[vh, vz]
+        indices = np.arange(0, n_vertices, 1).reshape([-1, 2]).T
+
+        top_face = np.r_[n_pts, np.arange(0, n_vertices, 2)],  # 上顶面
+        bottom_face = np.r_[n_pts, np.arange(1, n_vertices, 2)],  # 下底面
+        edge_counts = np.ones(n_pts) * 4
+        side_faces = np.c_[edge_counts, indices[0], indices[1], np.roll(indices[1], -1), np.roll(indices[0], -1)]\
+            .ravel()
+
+        faces = np.r_[top_face, bottom_face, side_faces]
+
+        shape = pv.PolyData(vertices, faces=faces)
+        return shape
