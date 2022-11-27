@@ -96,12 +96,12 @@ if __name__ == '__main__':
     if len(workers) == 1:
         f = executor.submit(main, [1.2, 1.2, 0.8], workers=workers)
     else:
-        f = executor.submit(main, [3, 3, 3])
+        f = executor.submit(main, [2.3, 2.3, 0.9])
 
     demaged_model, pred, demaged_model2, pred2, receiver_points = executor.gather([f])[0]
 
-    print((abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean())
-    print((abs(pred - pred2) / abs(pred)).mean())
+    print('Model MAPE (%):', (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean())
+    print('TMI MAPE (%):', (abs(pred - pred2) / abs(pred)).mean())
 
     fig = plt.figure(figsize=(17, 4))
 
