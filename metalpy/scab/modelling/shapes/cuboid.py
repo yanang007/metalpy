@@ -46,8 +46,11 @@ class Cuboid(Shape3D):
         ].sum() != 2:
             raise ValueError("Bounds or exactly two of center, lengths, corner, corner2 must be specified.")
 
+        if corner is not None:
+            corner = np.array(corner)
+
         if size is not None:
-            size = np.asarray(size)
+            size = np.array(size)
             if size.size == 1:
                 size = np.ones(3) * size
 
@@ -55,7 +58,6 @@ class Cuboid(Shape3D):
             corner = np.array(bounds[::2])
             size = np.array(bounds[1::2]) - corner
         elif corner is not None:  # 和corner2或center，计算size
-            corner = np.asarray(corner)
             if corner2 is not None:
                 size = np.asarray(corner2) - np.asarray(corner)
             elif center is not None:
@@ -81,7 +83,7 @@ class Cuboid(Shape3D):
         self.lengths = size
 
     def do_place(self, mesh_cell_centers, worker_id):
-        indices = is_inside_cuboid(mesh_cell_centers, self.corner, self.lengths) # np.all((mesh.cell_centers - self.corner) < self.lengths, axis=1)
+        indices = is_inside_cuboid(mesh_cell_centers, self.corner, self.lengths)
         return indices
 
     @property
@@ -123,7 +125,7 @@ class Cuboid(Shape3D):
         return hash((*self.corner, *self.lengths))
 
     def do_clone(self):
-        return Cuboid(corner=self.corner, size=self.lengths)
+        return Cuboid(corner=self.corner.copy(), size=self.lengths)
 
     def plot(self, ax, color):
         plot_opaque_cube(ax, *self.corner, *self.lengths, color=color)
