@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterable
 
 import numpy as np
 
@@ -312,7 +313,7 @@ class Shape3D(ABC):
         return self.rotate(y, a, b, degrees=degrees, seq=seq, inplace=inplace)
 
 
-def bounding_box_of(shapes: list[Shape3D]):
+def bounding_box_of(shapes: Iterable[Shape3D]):
     bounds = None
     for m in shapes:
         if bounds is None:

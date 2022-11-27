@@ -6,6 +6,7 @@ import tqdm
 from metalpy.mepa import LinearExecutor
 from .object import Object
 from .shapes import Shape3D
+from .shapes.shape3d import bounding_box_of
 
 
 class Scene:
@@ -40,6 +41,9 @@ class Scene:
         self.objects.append(obj)
 
         return obj
+
+    def bounds(self):
+        return bounding_box_of(self.shapes())
 
     @staticmethod
     def build_mesh_worker(objects: list[Object], mesh, show_modeling_progress, worker_id):
