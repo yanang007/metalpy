@@ -116,9 +116,9 @@ class Obj2(Shape3D):
 
             scale = check_scalar_or_list(scale, 3, 1)
 
-            scale[0] = check_scale(xl, xsize, xscale)
-            scale[1] = check_scale(yl, ysize, yscale)
-            scale[2] = check_scale(zl, zsize, zscale)
+            scale[0] = check_scale(xl, xsize, xscale, scale[0])
+            scale[1] = check_scale(yl, ysize, yscale, scale[1])
+            scale[2] = check_scale(zl, zsize, zscale, scale[2])
 
             if np.any(np.asarray(scale) != 1):
                 for i in range(len(models)):

@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Union, Iterable
 
 import numpy as np
 import tqdm
@@ -13,10 +13,8 @@ class Scene:
         self.objects: list[Object] = []
 
     @staticmethod
-    def of(shapes: list[Shape3D], values: Union[Any, dict, list[Any], list[dict], None] = None):
+    def of(*shapes: Shape3D, values: Union[Any, dict, list[Any], list[dict], None] = None):
         ret = Scene()
-        if values is None:
-            values = {}
         if not isinstance(values, list):
             values = [values] * len(shapes)
         for shape, value in zip(shapes, values):
@@ -24,18 +22,24 @@ class Scene:
 
         return ret
 
-    def append(self, shape: Shape3D, values: Union[dict[str, Any], Any]):
+    def append(self, shape: Shape3D, values: Union[dict[str, Any], Any]) -> Object:
         """添加三维几何体
 
         Parameters
         ----------
         shape
             三维几何体
-
         values
             三维几何体的参数
+
+        Returns
+        -------
+            返回构造的三维几何体
         """
-        self.objects.append(Object(shape, values))
+        obj = Object(shape, values)
+        self.objects.append(obj)
+
+        return obj
 
     @staticmethod
     def build_mesh_worker(objects: list[Object], mesh, show_modeling_progress, worker_id):
@@ -72,7 +76,7 @@ class Scene:
 
     def build(self, mesh,
               executor=None,
-              progress=False):
+              progress=False) -> Union[np.ndarray, dict[str, np.ndarray]]:
         """构建模型网格
 
         Parameters
@@ -119,18 +123,22 @@ class Scene:
         else:
             return values_dict
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Object]:
         for obj in self.objects:
             yield obj
 
-    def shapes(self):
+    def __getitem__(self, item) -> Object:
+        return self.objects[item]
+
+    def shapes(self) -> Iterable[Shape3D]:
         for obj in self.objects:
             yield obj.shape
 
     def to_multiblock(self):
         import pyvista as pv
+
         ret = pv.MultiBlock()
         for shape in self.shapes():
-            ret.append(shape.to_pyvista_dataset())
+            ret.append(shape.to_polydata())
 
         return ret

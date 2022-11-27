@@ -124,9 +124,9 @@ class Prism(Shape3D):
         vertices = np.c_[vh, vz]
         indices = np.arange(0, n_vertices, 1).reshape([-1, 2]).T
 
-        top_face = np.r_[n_pts, np.arange(0, n_vertices, 2)],  # 上顶面
-        bottom_face = np.r_[n_pts, np.arange(1, n_vertices, 2)],  # 下底面
-        edge_counts = np.ones(n_pts) * 4
+        top_face = np.r_[n_pts, np.arange(0, n_vertices, 2)]  # 上顶面
+        bottom_face = np.r_[n_pts, np.arange(1, n_vertices, 2)]  # 下底面
+        edge_counts = np.ones(n_pts, dtype=np.integer) * 4
         side_faces = np.c_[edge_counts, indices[0], indices[1], np.roll(indices[1], -1), np.roll(indices[0], -1)]\
             .ravel()
 

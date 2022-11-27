@@ -256,7 +256,7 @@ class Shape3D(ABC):
         return self.apply(Translation(x, y, z), inplace=inplace)
 
     def rotate(self, y, a, b, degrees=True, seq='xyz', inplace=False):
-        """对Shape进行旋转
+        """对Shape进行旋转，方向遵循左手准则
 
         Parameters
         ----------
