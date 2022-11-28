@@ -1,24 +1,36 @@
 SimPEG < 0.18.0
+Cython
 discretize
-vtk
-dask
+
+# Distributed computing
 distributed
+
+# Scientific computing
 pandas
 numpy
-tqdm
-pywin32  # 在低版本pip时可能需要手动进行post install，参见pywin32的pypi主页
-pyevtk
-pytest
 scipy
-psutil
-matplotlib
 scikit-learn
+pyamg
+taichi
 
+# Visualization
+tqdm
+pyvista
+vtk
+matplotlib
+
+# Basic utils
+psutil
 loky
 blosc2 >= 0.4.0
 
-# optional
-# bokeh
-# pyvista
+#Testing
+pytest
+
+#Misc
 properties
 colour
+
+# optional
+# bokeh  # 用于distributed的网页控制台
+# pywin32  # 用于grapher  # 在低版本pip时可能需要手动进行post install，参见pywin32的pypi主页
