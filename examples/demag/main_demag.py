@@ -92,7 +92,7 @@ def main(grid_size):
 if __name__ == '__main__':
     executor = get_exec_config()  # LinearExecutor(1)  #
 
-    workers = [w for w in executor.get_workers() if w.group == 'lab' and w.id is None]
+    workers = [w for w in executor.get_workers() if 'large-mem' in w.group]
     if len(workers) == 1:
         f = executor.submit(main, [1.2, 1.2, 0.8], workers=workers)
     else:
