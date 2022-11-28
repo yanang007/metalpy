@@ -29,12 +29,16 @@ class DaskExecutor(Executor):
 
         for host, workers in worker_groups.items():
             for worker in workers:
-                worker_name = worker.split('-')[0]
+                worker_instance = Worker(worker, weight=1, verbose=False)
+                worker_name = worker_instance.name
+
                 if worker_name in load_weight:
                     weight = load_weight[worker_name]
                 else:
                     weight = 1
-                self.workers.append(Worker(worker, weight))
+
+                worker_instance.weight = weight
+                self.workers.append(worker_instance)
                 n_actual_working_units += weight
 
         if n_units is None:

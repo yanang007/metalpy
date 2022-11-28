@@ -1,5 +1,5 @@
 class Worker:
-    def __init__(self, name, weight):
+    def __init__(self, name, weight=1, verbose=True):
         self.name = name
         self.weight = weight
         segments = name.split('-')
@@ -7,10 +7,12 @@ class Worker:
         self.group = '-'.join(segments[:-1]) or name
 
         if self.group == name or not segments[-1].isdigit():
-            print("WARNING: worker's name must follow the format '{group name}-{in-group id}', "
-                  "and in-group id is assumed to start from zero, "
-                  "if not, something may go wrong.")
-            self.id = None
+            if verbose:
+                print("WARNING: worker's name must follow the format '{group name}-{in-group id}', "
+                      "and in-group id is assumed to start from zero, "
+                      "if not, something may go wrong.")
+            self.id = 0
+            self.group = name
         else:
             self.id = int(segments[-1])
 
