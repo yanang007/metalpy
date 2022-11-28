@@ -13,8 +13,10 @@ def ti_prepare(**kwargs):
 
 
 def ti_init_once():
+    global ti_inited
     if not ti_inited:
         ti.init(**ti_args)
+        ti_inited = True
 
 
 def ti_func(fn, is_real_function=None):
@@ -38,3 +40,8 @@ def ti_kernel(fn):
         return evaluator.get()(*args, **kwargs)
 
     return lazy_evaluator_wrapper
+
+
+def ti_ndarray(dtype, shape):
+    ti_init_once()
+    return ti.ndarray(dtype, shape)
