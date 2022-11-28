@@ -6,13 +6,13 @@ from discretize.base import BaseTensorMesh
 from discretize.utils import mkvc
 
 from ..utils.misc import Field
-from ...utils.taichi import ti_kernel
+from ...utils.taichi import ti_kernel, ti_ndarray
 
 
 class Demagnetization:
     def __init__(self, mesh: BaseTensorMesh, source_field: Field, active_ind=None):
         """
-        听过BiCGSTAB求解计算退磁作用下的磁化强度
+        通过BiCGSTAB求解计算退磁作用下的磁化强度
 
         Parameters
         ----------
@@ -61,7 +61,6 @@ class Demagnetization:
         """
         nC = self.Xn.shape[0]
         nObs = self.receiver_locations.shape[0]
-        I = sp.identity(3 * nC)
         H0 = self.source_field.unit_vector
         H0 = np.repeat(H0, nC).ravel()
 
@@ -71,18 +70,17 @@ class Demagnetization:
             self.mesh.h[2].min(),
         ]
 
-        T = ti.ndarray(ti.f64, (3 * nObs, 3 * nC))
-        magnetic_vector_forward(
-            self.receiver_locations,
-            self.Xn, self.Yn, self.Zn,
-            base_cell_sizes,
-            T)
-        T = T.to_numpy()
+        A = ti_ndarray(ti.f64, (3 * nObs, 3 * nC))
+        # A = I - X @ T, where T is the forward kernel, T @ mv = Bv
+        # mv and Bv is channel first
+        # mv = [Mx1, My1, Mz1, ... Mxn, Myn, Mzn]
+        # Bv = [Bx1, By1, Bz1, ... Bxn, Byn, Bzn]
+        kernel_matrix_forward(self.receiver_locations, self.Xn, self.Yn, self.Zn, base_cell_sizes, model, A)
+        A = A.to_numpy()
 
         X = np.repeat(model[None, :], 3, axis=0).ravel()
         X = sp.diags(X)
 
-        A = I - X @ T
         b = X @ H0
 
         m, info = pyamg.krylov.bicgstab(A, b)
@@ -92,12 +90,13 @@ class Demagnetization:
 
 
 @ti_kernel
-def magnetic_vector_forward(
+def kernel_matrix_forward(
         receiver_locations: ti.types.ndarray(),
-        Xn: ti.types.ndarray(),
-        Yn: ti.types.ndarray(),
-        Zn: ti.types.ndarray(),
+        xn: ti.types.ndarray(),
+        yn: ti.types.ndarray(),
+        zn: ti.types.ndarray(),
         base_cell_sizes: ti.types.ndarray(),
+        susc_model: ti.types.ndarray(),
         ret: ti.types.ndarray()
 ):
     # TODO: This should probably be converted to C
@@ -105,7 +104,7 @@ def magnetic_vector_forward(
     tol2 = 1e-4  # Tolerance 2 for numerical stability over nodes and edges
 
     # number of cells in mesh
-    nC = Xn.shape[0]
+    nC = xn.shape[0]
     nObs = receiver_locations.shape[0]
 
     # base cell dimensions
@@ -116,24 +115,24 @@ def magnetic_vector_forward(
     for iobs, icell in ti.ndrange(receiver_locations.shape[0], nC):
         # comp. pos. differences for tne, bsw nodes. Adjust if location within
         # tolerance of a node or edge
-        dz2 = Zn[icell, 1] - receiver_locations[iobs, 2]
+        dz2 = zn[icell, 1] - receiver_locations[iobs, 2]
         if ti.abs(dz2) / min_hz < tol2:
             dz2 = tol2 * min_hz
-        dz1 = Zn[icell, 0] - receiver_locations[iobs, 2]
+        dz1 = zn[icell, 0] - receiver_locations[iobs, 2]
         if ti.abs(dz1) / min_hz < tol2:
             dz1 = tol2 * min_hz
 
-        dy2 = Yn[icell, 1] - receiver_locations[iobs, 1]
+        dy2 = yn[icell, 1] - receiver_locations[iobs, 1]
         if ti.abs(dy2) / min_hy < tol2:
             dy2 = tol2 * min_hy
-        dy1 = Yn[icell, 0] - receiver_locations[iobs, 1]
+        dy1 = yn[icell, 0] - receiver_locations[iobs, 1]
         if ti.abs(dy1) / min_hy < tol2:
             dy1 = tol2 * min_hy
 
-        dx2 = Xn[icell, 1] - receiver_locations[iobs, 0]
+        dx2 = xn[icell, 1] - receiver_locations[iobs, 0]
         if ti.abs(dx2) / min_hx < tol2:
             dx2 = tol2 * min_hx
-        dx1 = Xn[icell, 0] - receiver_locations[iobs, 0]
+        dx1 = xn[icell, 0] - receiver_locations[iobs, 0]
         if ti.abs(dx1) / min_hx < tol2:
             dx1 = tol2 * min_hx
 
@@ -307,14 +306,17 @@ def magnetic_vector_forward(
             - -2 * ti.atan2(dz1, arg36_ + tol1)
         ) / -4 / ti.math.pi
 
-        ret[iobs, icell] = bx_x
-        ret[iobs, icell + nC] = bx_y
-        ret[iobs, icell + 2 * nC] = bx_z
+        ret[iobs, icell] = -susc_model[icell] * bx_x
+        ret[iobs, icell + nC] = -susc_model[icell] * bx_y
+        ret[iobs, icell + 2 * nC] = -susc_model[icell] * bx_z
 
-        ret[iobs + nObs, icell] = by_x
-        ret[iobs + nObs, icell + nC] = by_y
-        ret[iobs + nObs, icell + 2 * nC] = by_z
+        ret[iobs + nObs, icell] = -susc_model[icell] * by_x
+        ret[iobs + nObs, icell + nC] = -susc_model[icell] * by_y
+        ret[iobs + nObs, icell + 2 * nC] = -susc_model[icell] * by_z
 
-        ret[iobs + 2 * nObs, icell] = bz_x
-        ret[iobs + 2 * nObs, icell + nC] = bz_y
-        ret[iobs + 2 * nObs, icell + 2 * nC] = bz_z
+        ret[iobs + 2 * nObs, icell] = -susc_model[icell] * bz_x
+        ret[iobs + 2 * nObs, icell + nC] = -susc_model[icell] * bz_y
+        ret[iobs + 2 * nObs, icell + 2 * nC] = -susc_model[icell] * bz_z
+
+    for i in range(3 * nC):
+        ret[i, i] += 1
