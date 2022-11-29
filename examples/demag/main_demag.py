@@ -16,10 +16,12 @@ from metalpy.scab.modelling.shapes import Ellipsoid
 from metalpy.scab.utils.misc import define_inducing_field
 
 from config import get_exec_config
+from metalpy.utils.taichi import ti_prepare
 from metalpy.utils.time import Timer
 
 
 def main(grid_size):
+    ti_prepare(packed=True)
     a, c = 10, 40
     timer = Timer()
 
