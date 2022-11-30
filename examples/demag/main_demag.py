@@ -1,4 +1,5 @@
 import numpy as np
+import taichi as ti
 from SimPEG import maps
 from SimPEG.potential_fields import magnetics
 from SimPEG.utils import plot2Ddata
@@ -8,7 +9,7 @@ from matplotlib import pyplot as plt
 
 from forward import setup_cuboids_model
 from metalpy.mepa import LinearExecutor, ProcessExecutor
-from metalpy.scab import simpeg_patched, Distributed, Progressed
+from metalpy.scab import simpeg_patched, Progressed
 from metalpy.scab.demag import Demagnetization
 from metalpy.scab.demag.factored_demagnetization import FactoredDemagnetization
 from metalpy.scab.demag.utils import get_prolate_spheroid_demag_factor
@@ -55,7 +56,7 @@ def main(grid_size):
 
     print(f"Solving: {timer}")
 
-    print("MagModel MAPE(%): ", (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean())
+    print("MagModel MAPE(%): ", (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean() * 100)
 
     with simpeg_patched(Progressed()):
         obsx = np.arange(-c, c + 1, 1) * 2
@@ -98,12 +99,14 @@ if __name__ == '__main__':
     if len(workers) == 1:
         f = executor.submit(main, [1.2, 1.2, 0.8], workers=workers)
     else:
+        if isinstance(executor, LinearExecutor):
+            ti_prepare(arch=ti.gpu)
         f = executor.submit(main, [2.3, 2.3, 0.9])
 
     demaged_model, pred, demaged_model2, pred2, receiver_points = executor.gather([f])[0]
 
-    print('Model MAPE (%):', (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean())
-    print('TMI MAPE (%):', (abs(pred - pred2) / abs(pred)).mean())
+    print('Model MAPE (%):', (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean() * 100)
+    print('TMI MAPE (%):', (abs(pred - pred2) / abs(pred)).mean() * 100)
 
     fig = plt.figure(figsize=(17, 4))
 
