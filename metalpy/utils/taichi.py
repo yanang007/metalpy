@@ -45,3 +45,46 @@ def ti_kernel(fn):
 def ti_ndarray(dtype, shape):
     ti_init_once()
     return ti.ndarray(dtype, shape)
+
+
+def ti_root():
+    ti_init_once()
+    return ti.root
+
+
+def ti_field(dtype,
+             shape=None,
+             order=None,
+             name="",
+             offset=None,
+             needs_grad=False,
+             needs_dual=False):
+    ti_init_once()
+    return ti.field(dtype, shape, order, name, offset, needs_grad, needs_dual)
+
+
+class WrappedFieldsBuilder:
+    def __init__(self):
+        self.fields_builder = ti.FieldsBuilder()
+        self.snode_tree = None
+
+    def finalize(self, raise_warning=True):
+        self.snode_tree = self.fields_builder.finalize(raise_warning)
+        return self.snode_tree
+
+    def destroy(self):
+        self.snode_tree.destroy()
+
+    def __getattr__(self, name):
+        return getattr(self.fields_builder, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.destroy()
+
+
+def ti_FieldsBuilder():
+    ti_init_once()
+    return WrappedFieldsBuilder()
