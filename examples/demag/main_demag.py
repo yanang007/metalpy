@@ -21,8 +21,10 @@ from metalpy.utils.taichi import ti_prepare
 from metalpy.utils.time import Timer
 
 
-def main(grid_size):
-    ti_prepare(packed=True)
+def main(grid_size, gpu=False):
+    if gpu:
+        ti_prepare(arch=ti.gpu)
+
     a, c = 10, 40
     timer = Timer()
 
@@ -99,9 +101,10 @@ if __name__ == '__main__':
     if len(workers) == 1:
         f = executor.submit(main, [1.2, 1.2, 0.8], workers=workers)
     else:
-        if isinstance(executor, LinearExecutor):
-            ti_prepare(arch=ti.gpu)
-        f = executor.submit(main, [2.3, 2.3, 0.9])
+        gpu = False
+        if executor.is_local():
+            gpu = True
+        f = executor.submit(main, [2.3, 2.3, 0.9], gpu=gpu)
 
     demaged_model, pred, demaged_model2, pred2, receiver_points = executor.gather([f])[0]
 
