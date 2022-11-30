@@ -6,7 +6,7 @@ from discretize.base import BaseTensorMesh
 from discretize.utils import mkvc
 
 from ..utils.misc import Field
-from ...utils.taichi import ti_kernel, ti_field, ti_FieldsBuilder
+from ...utils.taichi import ti_kernel, ti_field, ti_FieldsBuilder, ti_cfg, ti_ndarray, ti_test_snode_support
 
 
 class Demagnetization:
@@ -70,22 +70,7 @@ class Demagnetization:
             self.mesh.h[2].min(),
         ]
 
-        with ti_FieldsBuilder() as builder:
-            Tmat = [
-                ti_field(ti.f64)
-                for _ in range(3 * 3)
-            ]  # Txx, Txy, Txz, Tyx, Tyy, Tyz, Tzx, Tzy, Tzz
-
-            builder.dense(ti.ij, (nObs, nC)).place(*Tmat)
-            builder.finalize()
-
-            kernel_matrix_forward(self.receiver_locations, self.Xn, self.Yn, self.Zn, base_cell_sizes, model, *Tmat)
-
-            A = np.empty((3 * nObs, 3 * nC), dtype=np.float64)
-            for i in range(3):
-                for j in range(3):
-                    tensor_to_ext_arr(Tmat[i * 3 + j], A, i, 3, j, 3)
-
+        A = forward(self.receiver_locations, self.Xn, self.Yn, self.Zn, base_cell_sizes, model)
         X = np.tile(model, 3).ravel()
         X = sp.diags(X)
 
@@ -94,6 +79,81 @@ class Demagnetization:
         m, info = pyamg.krylov.bicgstab(A, b)
 
         return m.reshape(-1, 3)
+
+
+def forward(receiver_locations: np.ndarray,
+            xn: np.ndarray,
+            yn: np.ndarray,
+            zn: np.ndarray,
+            base_cell_sizes: np.ndarray,
+            susc_model: np.ndarray, ):
+    if ti_cfg().arch == ti.cpu:
+        method = forward_cpu
+    elif ti_test_snode_support():
+        method = forward_gpu
+    else:
+        print("Current GPU doesn't support SNode, fall back to legacy implementation.")
+        method = forward_gpu_legacy
+
+    return method(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model)
+
+
+def forward_cpu(receiver_locations: np.ndarray,
+                xn: np.ndarray,
+                yn: np.ndarray,
+                zn: np.ndarray,
+                base_cell_sizes: np.ndarray,
+                susc_model: np.ndarray, ):
+    nC = xn.shape[0]
+    nObs = receiver_locations.shape[0]
+    A = np.empty((3 * nObs, 3 * nC), dtype=np.float64)
+    kernel_matrix_forward(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model,
+                          *[0] * 9, A, True)
+
+    return A
+
+
+def forward_gpu(receiver_locations: np.ndarray,
+                xn: np.ndarray,
+                yn: np.ndarray,
+                zn: np.ndarray,
+                base_cell_sizes: np.ndarray,
+                susc_model: np.ndarray, ):
+    with ti_FieldsBuilder() as builder:
+        nC = xn.shape[0]
+        nObs = receiver_locations.shape[0]
+        A = np.empty((3 * nObs, 3 * nC), dtype=np.float64)
+        Tmat = [
+            ti_field(ti.f64)
+            for _ in range(3 * 3)
+        ]  # Txx, Txy, Txz, Tyx, Tyy, Tyz, Tzx, Tzy, Tzz
+        for m in Tmat:
+            builder.dense(ti.ij, (nObs, nC)).place(m)
+        builder.finalize()
+
+        kernel_matrix_forward(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model,
+                              *Tmat, np.empty(0), False)
+
+        for i in range(3):
+            for j in range(3):
+                tensor_to_ext_arr(Tmat[i * 3 + j], A, i, 3, j, 3)
+
+    return A
+
+
+def forward_gpu_legacy(receiver_locations: np.ndarray,
+                       xn: np.ndarray,
+                       yn: np.ndarray,
+                       zn: np.ndarray,
+                       base_cell_sizes: np.ndarray,
+                       susc_model: np.ndarray, ):
+    nC = xn.shape[0]
+    nObs = receiver_locations.shape[0]
+    A = ti_ndarray(dtype=ti.f64, shape=(3 * nObs, 3 * nC))
+    kernel_matrix_forward(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model,
+                          *[0] * 9, A, True)
+
+    return A.to_numpy()
 
 
 @ti_kernel
@@ -113,6 +173,8 @@ def kernel_matrix_forward(
         Tzx: ti.types.template(),
         Tzy: ti.types.template(),
         Tzz: ti.types.template(),
+        mat: ti.types.ndarray(),
+        write_to_mat: ti.template(),
 ):
     # calculates A = I - X @ T, where T is the forward kernel, s.t. T @ m_v = B_v
     # m_v and B_v are both channel first (Array of Structure in taichi)
@@ -137,13 +199,14 @@ def kernel_matrix_forward(
 
     # number of cells in mesh
     nC = xn.shape[0]
+    nObs = receiver_locations.shape[0]
 
     # base cell dimensions
     min_hx = base_cell_sizes[0]
     min_hy = base_cell_sizes[1]
     min_hz = base_cell_sizes[2]
 
-    for iobs, icell in ti.ndrange(receiver_locations.shape[0], nC):
+    for iobs, icell in ti.ndrange(nObs, nC):
         # comp. pos. differences for tne, bsw nodes. Adjust if location within
         # tolerance of a node or edge
         dz2 = zn[icell, 1] - receiver_locations[iobs, 2]
@@ -339,20 +402,35 @@ def kernel_matrix_forward(
 
         neg_sus = -susc_model[icell]
 
-        Txx[iobs, icell] = neg_sus * txx
-        Txy[iobs, icell] = neg_sus * txy
-        Txz[iobs, icell] = neg_sus * txz
-        Tyx[iobs, icell] = neg_sus * tyx
-        Tyy[iobs, icell] = neg_sus * tyy
-        Tyz[iobs, icell] = neg_sus * tyz
-        Tzx[iobs, icell] = neg_sus * tzx
-        Tzy[iobs, icell] = neg_sus * tzy
-        Tzz[iobs, icell] = neg_sus * tzz
+        if ti.static(write_to_mat):
+            mat[iobs * 3 + 0, icell * 3 + 0] = neg_sus * txx
+            mat[iobs * 3 + 0, icell * 3 + 1] = neg_sus * txy
+            mat[iobs * 3 + 0, icell * 3 + 2] = neg_sus * txz
+            mat[iobs * 3 + 1, icell * 3 + 0] = neg_sus * tyx
+            mat[iobs * 3 + 1, icell * 3 + 1] = neg_sus * tyy
+            mat[iobs * 3 + 1, icell * 3 + 2] = neg_sus * tyz
+            mat[iobs * 3 + 2, icell * 3 + 0] = neg_sus * tzx
+            mat[iobs * 3 + 2, icell * 3 + 1] = neg_sus * tzy
+            mat[iobs * 3 + 2, icell * 3 + 2] = neg_sus * tzz
+        else:
+            Txx[iobs, icell] = neg_sus * txx
+            Txy[iobs, icell] = neg_sus * txy
+            Txz[iobs, icell] = neg_sus * txz
+            Tyx[iobs, icell] = neg_sus * tyx
+            Tyy[iobs, icell] = neg_sus * tyy
+            Tyz[iobs, icell] = neg_sus * tyz
+            Tzx[iobs, icell] = neg_sus * tzx
+            Tzy[iobs, icell] = neg_sus * tzy
+            Tzz[iobs, icell] = neg_sus * tzz
 
-    for i in range(nC):
-        Txx[i, i] += 1
-        Tyy[i, i] += 1
-        Tzz[i, i] += 1
+    if ti.static(write_to_mat):
+        for i in range(3 * nC):
+            mat[i, i] += 1
+    else:
+        for i in range(nC):
+            Txx[i, i] += 1
+            Tyy[i, i] += 1
+            Tzz[i, i] += 1
 
 
 @ti_kernel

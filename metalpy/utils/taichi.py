@@ -1,9 +1,12 @@
 import taichi as ti
 
 from metalpy.mepa import LazyEvaluator
+from metalpy.utils.file import make_cache_directory
 
 ti_args = {
-    'arch': ti.cpu
+    'arch': ti.cpu,
+    'offline_cache': True,
+    'offline_cache_file_path': make_cache_directory('taichi_cache'),
 }
 ti_inited = False
 
@@ -52,6 +55,11 @@ def ti_root():
     return ti.root
 
 
+def ti_cfg():
+    ti_init_once()
+    return ti.cfg
+
+
 def ti_field(dtype,
              shape=None,
              order=None,
@@ -73,7 +81,8 @@ class WrappedFieldsBuilder:
         return self.snode_tree
 
     def destroy(self):
-        self.snode_tree.destroy()
+        if self.snode_tree is not None:
+            self.snode_tree.destroy()
 
     def __getattr__(self, name):
         return getattr(self.fields_builder, name)
@@ -88,3 +97,26 @@ class WrappedFieldsBuilder:
 def ti_FieldsBuilder():
     ti_init_once()
     return WrappedFieldsBuilder()
+
+
+def ti_test_snode_support() -> bool:
+    """测试cuda版本是否支持SNode和FieldsBuilder
+
+    如果不支持，则需要使用动态数组ti.ndarray来代替
+
+    Returns
+    -------
+        当前显卡cuda版本是否支持SNode和FieldsBuilder
+    """
+    ti_init_once()
+
+    try:
+        with ti_FieldsBuilder() as builder:
+            dummy = ti_field(ti.f64)
+            builder.dense(ti.ij, (1, 1)).place(dummy)
+            builder.finalize()
+            _ = dummy.to_numpy()
+    except RuntimeError:
+        return False
+
+    return True
