@@ -1,13 +1,17 @@
+import os
+
 import taichi as ti
 from taichi.lang.util import to_taichi_type
 
 from ..mepa import LazyEvaluator
-from .file import make_cache_directory
+from .file import make_cache_directory, make_cache_file
+
+ti_cache_prefix = 'taichi_cache'
 
 ti_args = {
     'arch': ti.cpu,
     'offline_cache': True,
-    'offline_cache_file_path': make_cache_directory('taichi_cache'),
+    'offline_cache_file_path': make_cache_directory(ti_cache_prefix),
 }
 ti_inited = False
 
@@ -110,17 +114,24 @@ def ti_test_snode_support() -> bool:
         当前显卡cuda版本是否支持SNode和FieldsBuilder
     """
     ti_init_once()
-
+    snode_support_indicator_cache = make_cache_file(f'{ti_cache_prefix}/snode_support')
+    if os.path.exists(snode_support_indicator_cache):
+        with open(snode_support_indicator_cache, 'r') as f:
+            return f.read() == '1'
     try:
         with ti_FieldsBuilder() as builder:
             dummy = ti_field(ti.f64)
             builder.dense(ti.ij, (1, 1)).place(dummy)
             builder.finalize()
             _ = dummy.to_numpy()
+            ret = True
     except RuntimeError:
-        return False
+        ret = False
 
-    return True
+    with open(snode_support_indicator_cache, 'w') as f:
+        f.write('1' if ret else '0')
+
+    return ret
 
 
 def ti_ndarray_from(arr, sdim=0):
