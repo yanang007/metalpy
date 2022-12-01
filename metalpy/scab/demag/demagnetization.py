@@ -118,18 +118,18 @@ def kernel_matrix_forward(
     # m_v and B_v are both channel first (Array of Structure in taichi)
     # m_v = [Mx1, My1, Mz1, ... Mxn, Myn, Mzn]
     # B_v = [Bx1, By1, Bz1, ... Bxn, Byn, Bzn]
-    #     | ---                      nC                        --- |
-    #     ---------------------------------------------------------- ---
-    #     | Txx, Txy, Txz, | Txx, Txy, Txz, | ... | Txx, Txy, Txz, |  |
-    #     | Tyx, Tyy, Tyz, | Tyx, Tyy, Tyz, | ... | Tyx, Tyy, Tyz, |  |
-    #     | Tzx, Tzy, Tzz, | Tzx, Tzy, Tzz, | ... | Tzx, Tzy, Tzz, |  |
-    #     ----------------------------------------------------------
-    # T = | ...            | ...            | ... | ...            |  nObs
-    #     ----------------------------------------------------------
-    #     | Txx, Txy, Txz, | Txx, Txy, Txz, | ... | Txx, Txy, Txz, |  |
-    #     | Tyx, Tyy, Tyz, | Tyx, Tyy, Tyz, | ... | Tyx, Tyy, Tyz, |  |
-    #     | Tzx, Tzy, Tzz, | Tzx, Tzy, Tzz, | ... | Tzx, Tzy, Tzz, |  |
-    #     ---------------------------------------------------------- ---
+    #     ┌─────────────────────────── nC ─────────────────────────┐
+    #     ┌────────────────┬────────────────┬─────┬────────────────┐ ─┐
+    #     │ Txx, Txy, Txz, │ Txx, Txy, Txz, │ ... │ Txx, Txy, Txz, │  │
+    #     │ Tyx, Tyy, Tyz, │ Tyx, Tyy, Tyz, │ ... │ Tyx, Tyy, Tyz, │  │
+    #     │ Tzx, Tzy, Tzz, │ Tzx, Tzy, Tzz, │ ... │ Tzx, Tzy, Tzz, │  │
+    #     ├────────────────┼────────────────┼─────┼────────────────┤  │
+    # T = │ ...            │ ...            │ ... │ ...            │ nObs
+    #     ├────────────────┼────────────────┼─────┼────────────────┤  │
+    #     │ Txx, Txy, Txz, │ Txx, Txy, Txz, │ ... │ Txx, Txy, Txz, │  │
+    #     │ Tyx, Tyy, Tyz, │ Tyx, Tyy, Tyz, │ ... │ Tyx, Tyy, Tyz, │  │
+    #     │ Tzx, Tzy, Tzz, │ Tzx, Tzy, Tzz, │ ... │ Tzx, Tzy, Tzz, │  │
+    #     └────────────────┴────────────────┴─────┴────────────────┘ ─┘
 
     # TODO: This should probably be converted to C
     tol1 = 1e-10  # Tolerance 1 for numerical stability over nodes and edges
