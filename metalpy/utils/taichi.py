@@ -1,7 +1,8 @@
 import taichi as ti
+from taichi.lang.util import to_taichi_type
 
-from metalpy.mepa import LazyEvaluator
-from metalpy.utils.file import make_cache_directory
+from ..mepa import LazyEvaluator
+from .file import make_cache_directory
 
 ti_args = {
     'arch': ti.cpu,
@@ -120,3 +121,46 @@ def ti_test_snode_support() -> bool:
         return False
 
     return True
+
+
+def ti_ndarray_from(arr, sdim=0):
+    """从其他数组类型创建Taichi ndarray
+
+    Parameters
+    ----------
+    arr
+        外部数组
+    sdim
+        结构维度，0代表Scalar，1代表Vector，2代表Matrix
+
+    Returns
+    -------
+        返回结构维度为sdim的Taichi ndarray
+    """
+    ti_init_once()
+
+    dt = to_taichi_type(arr.dtype)
+    if sdim == 0:
+        shape = arr.shape
+    elif sdim == 1:
+        dt = ti.types.vector(arr.shape[-1], dt)
+        shape = arr.shape[:-1]
+    elif sdim == 2:
+        dt = ti.types.matrix(*arr.shape[-sdim:], dt)
+        shape = arr.shape[:-sdim]
+    else:
+        raise ValueError(f"Unsupported structure dim: {sdim}")
+
+    container = ti.ndarray(dtype=dt, shape=shape)
+    typeinfo = type(arr)
+    typename = typeinfo.__name__
+    if typename == 'ndarray':
+        container.from_numpy(arr)
+    else:
+        raise ValueError(f"Unsupported array type: {typename}")
+    # taichi暂未为ndarray实现这些来源
+    # elif typeinfo.__module__ == 'torch':
+    #     container.from_torch(arr)
+    # elif typeinfo.__module__ == 'paddle':
+    #     container.from_paddle(arr)
+    return container
