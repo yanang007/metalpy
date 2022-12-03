@@ -42,8 +42,10 @@ def pop_or_default(dictionary, key, _default=None):
     )
 
 
-def not_none_or_default(val, _default):
+def not_none_or_default(val, _default=None, supplier=None):
     if val is None:
+        if _default is None:
+            _default = supplier()
         return _default
     else:
         return val
