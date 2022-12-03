@@ -4,6 +4,7 @@ import numpy as np
 from discretize.utils import mkvc
 
 from metalpy.mexin import Mixin
+
 from .tied_simulation3d_integral import TaichiSimulation3DIntegral, Receiver
 
 

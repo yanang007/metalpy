@@ -124,16 +124,22 @@ class TaichiSimulation3DIntegral:
         if forward_only:
             n_col = 1
 
-        n_row = sum(receiver.n_rows for receiver in self.receivers)
+        n_rows = sum(receiver.n_rows for receiver in self.receivers)
         if is_cpu:
-            ret = np.empty((n_row, n_col), dtype=np.float64)
+            ret = np.empty((n_rows, n_col), dtype=np.float64)
         else:
-            ret = ti_ndarray(dtype=ti.f64, shape=(n_row, n_col))
+            ret = ti_ndarray(dtype=ti.f64, shape=(n_rows, n_col))
 
         start_row = 0
         for receiver in self.receivers:
             receiver_locations = receiver.receiver_locations
             components = receiver.components
+
+            # TODO: 由于Taichi目前采用i32作为索引类型，
+            #  主循环使用的ti.ndrange也会受限于这个限制，
+            #  因此需要分批处理
+            n_rx_rows = receiver.n_rows
+            n_batches = int(np.ceil((n_rx_rows * self.n_cells) / np.iinfo(np.int32).max))
 
             all_components = np.asarray(['tmi', 'bx', 'by', 'bz', 'bxx', 'bxy', 'bxz', 'byy', 'byz', 'bzz'])
             components_indices = {f'i{c}': -1 for c in all_components}
@@ -141,16 +147,17 @@ class TaichiSimulation3DIntegral:
                 components_indices[f'i{c}'] = i
             n_components = len(components)
 
-            self._kernel_matrix_forward(
-                xn=self.xn, yn=self.yn, zn=self.zn,
-                receiver_locations=receiver_locations,
-                model=model, forward_only=forward_only,
-                magnetization=self.magnetization,
-                **components_indices, n_components=n_components,
-                start_row=start_row,
-                ret=ret)
+            for rx_locs in np.array_split(receiver_locations, n_batches):
+                self._kernel_matrix_forward(
+                    xn=self.xn, yn=self.yn, zn=self.zn,
+                    receiver_locations=rx_locs,
+                    model=model, forward_only=forward_only,
+                    magnetization=self.magnetization,
+                    **components_indices, n_components=n_components,
+                    start_row=start_row,
+                    ret=ret)
 
-            start_row += len(receiver_locations) * len(components)
+                start_row += rx_locs.shape[0] * n_components
 
         if not is_cpu:
             ret = ret.to_numpy()
@@ -211,8 +218,7 @@ class TaichiSimulation3DIntegral:
         tol1 = 1e-10  # Tolerance 1 for numerical stability over nodes and edges
         tol2 = 1e-4  # Tolerance 2 for numerical stability over nodes and edges
 
-        # number of cells in mesh
-        n_cells = self.xn.shape[0]
+        # number of observations
         n_obs = receiver_locations.shape[0]
 
         # base cell dimensions
@@ -225,7 +231,7 @@ class TaichiSimulation3DIntegral:
         py = self.tmi_projection[1]
         pz = self.tmi_projection[2]
 
-        for iobs, icell in ti.ndrange(n_obs, n_cells):
+        for iobs, icell in ti.ndrange(n_obs, self.n_cells):
             # comp. pos. differences for tne, bsw nodes. Adjust if location within
             # tolerance of a node or edge
             dz2 = zn[icell, 1] - receiver_locations[iobs, 2]
@@ -382,7 +388,7 @@ class TaichiSimulation3DIntegral:
                         accumulative=self.Accumulative
                     )
 
-            if ti.static(iby >= 0):
+            if ti.static(iby >= 0) or ti.static(itmi >= 0):
                 tx = (
                     ti.log(arg5)
                     - ti.log(arg10)
@@ -432,7 +438,7 @@ class TaichiSimulation3DIntegral:
                         accumulative=self.Accumulative
                     )
 
-            if ti.static(ibz >= 0):
+            if ti.static(ibz >= 0) or ti.static(itmi >= 0):
                 tx = (
                     ti.log(arg4)
                     - ti.log(arg9)
