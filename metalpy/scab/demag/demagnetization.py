@@ -193,7 +193,6 @@ def kernel_matrix_forward(
     #     │ Tzx, Tzy, Tzz, │ Tzx, Tzy, Tzz, │ ... │ Tzx, Tzy, Tzz, │  │
     #     └────────────────┴────────────────┴─────┴────────────────┘ ─┘
 
-    # TODO: This should probably be converted to C
     tol1 = 1e-10  # Tolerance 1 for numerical stability over nodes and edges
     tol2 = 1e-4  # Tolerance 2 for numerical stability over nodes and edges
 
