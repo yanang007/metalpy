@@ -120,6 +120,7 @@ def locate_files_by(paths, *, prefix=None, suffix=None, ext=None, contains=None,
 def make_cache_file(name):
     cache_dir = './.cache'
     ret = os.path.join(cache_dir, name)
+    ret = os.path.abspath(ret)
     ensure_filepath(ret)
     return ret
 
@@ -127,5 +128,6 @@ def make_cache_file(name):
 def make_cache_directory(name):
     cache_dir = './.cache'
     ret = os.path.join(cache_dir, name)
+    ret = os.path.abspath(ret)
     ensure_dir(ret)
     return ret
