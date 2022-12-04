@@ -1,4 +1,4 @@
-SimPEG < 0.18.0
+SimPEG >= 0.18.0
 Cython
 discretize
 
