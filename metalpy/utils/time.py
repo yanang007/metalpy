@@ -3,14 +3,23 @@ import time
 
 class Timer:
     def __init__(self):
+        """单位为ns的计时器
+        """
         self.started = 0
         self.elapsed = 0
-        pass
+        self.stopped = -1
 
     def __enter__(self):
-        self.started = time.perf_counter_ns()
+        self.start()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+    def start(self):
+        self.started = time.perf_counter_ns()
+
+    def stop(self):
         self.stopped = time.perf_counter_ns()
         self.elapsed = self.stopped - self.started
 
