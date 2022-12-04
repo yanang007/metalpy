@@ -8,6 +8,8 @@ import tqdm
 from metalpy.utils.taichi import ti_kernel, ti_cfg, ti_ndarray, ti_func, ti_data_oriented, ti_index
 from metalpy.utils.type import ensure_as_iterable, not_none_or_default
 
+from ...value_observer import ValueObserver
+
 
 class Receiver:
     def __init__(self,
@@ -135,6 +137,18 @@ class TaichiSimulation3DIntegral:
         else:
             ret = ti_ndarray(dtype=ti.f64, shape=(n_rows, n_cols))
 
+        monitor = None
+        if progress is not None:
+            progress.reset(total=n_rows * n_cols)
+            check_start_row = 0
+            ending_row = 0
+            processed = 0
+            monitor = ValueObserver(lambda: processed + np.count_nonzero(ret[check_start_row:ending_row, -1]) * n_cols,
+                                    lambda dx: progress.update(dx),
+                                    interval=0.5)
+            if is_cpu:
+                monitor.start()
+
         start_row = 0
         for receiver in self.receivers:
             receiver_locations = receiver.receiver_locations
@@ -153,6 +167,14 @@ class TaichiSimulation3DIntegral:
             n_components = len(components)
 
             for rx_locs in np.array_split(receiver_locations, n_batches):
+                section_rows = rx_locs.shape[0] * n_components
+
+                if monitor is not None:
+                    # 进度判定行区间
+                    ending_row += section_rows
+                    check_start_row = ending_row - section_rows
+                    processed = start_row * self.n_cells  # 防止在尾处理和到新的迭代前进度条数值错误
+
                 self._kernel_matrix_forward(
                     xn=self.xn, yn=self.yn, zn=self.zn,
                     receiver_locations=rx_locs,
@@ -162,7 +184,14 @@ class TaichiSimulation3DIntegral:
                     start_row=start_row,
                     ret=ret)
 
-                start_row += rx_locs.shape[0] * n_components
+                start_row += section_rows
+
+                if monitor is not None:
+                    monitor.sync(start_row * self.n_cells)
+
+        if monitor is not None:
+            monitor.stop()
+            progress.close()
 
         if not is_cpu:
             ret = ret.to_numpy()

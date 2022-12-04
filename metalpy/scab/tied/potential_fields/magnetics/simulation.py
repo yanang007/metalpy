@@ -71,7 +71,9 @@ class TiedSimulation3DIntegralMixin(Mixin):
         receivers = [Receiver(rx.locations, rx.components) for rx in self.survey.source_field.receiver_list]
 
         progress = self.mixins.get(Progress)
-        progress.set_manual_update(True)
+        if progress is not None:
+            progress.set_manual_update(True)
+            progress = progress.progressbar
 
         kernel = TaichiSimulation3DIntegral(
             receivers=receivers,
@@ -82,7 +84,7 @@ class TiedSimulation3DIntegralMixin(Mixin):
             row_stype=TaichiSimulation3DIntegral.Layout_SoA,
             col_stype=TaichiSimulation3DIntegral.Layout_AoS,
             tmi_projection=self.tmi_projection,
-        ).dpred(model, progress=progress.progressbar)
+        ).dpred(model, progress=progress)
 
         if self.store_sensitivities == "forward_only":
             kernel = kernel.ravel()
