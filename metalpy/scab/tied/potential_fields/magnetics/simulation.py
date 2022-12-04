@@ -4,6 +4,7 @@ import numpy as np
 from discretize.utils import mkvc
 
 from metalpy.mexin import Mixin
+from metalpy.scab.progressed import Progress
 
 from .tied_simulation3d_integral import TaichiSimulation3DIntegral, Receiver
 
@@ -28,8 +29,6 @@ class TiedSimulation3DIntegralMixin(Mixin):
                     print(f"Found sensitivity file at {sens_name} with expected shape")
                     kernel = np.asarray(kernel)
                     return kernel
-
-        receiver_locations = self.survey.receiver_locations
 
         forward_only = self.store_sensitivities == "forward_only"
         if forward_only:
@@ -71,6 +70,9 @@ class TiedSimulation3DIntegralMixin(Mixin):
 
         receivers = [Receiver(rx.locations, rx.components) for rx in self.survey.source_field.receiver_list]
 
+        progress = self.mixins.get(Progress)
+        progress.set_manual_update(True)
+
         kernel = TaichiSimulation3DIntegral(
             receivers=receivers,
             xn=xn, yn=yn, zn=zn,
@@ -80,7 +82,7 @@ class TiedSimulation3DIntegralMixin(Mixin):
             row_stype=TaichiSimulation3DIntegral.Layout_SoA,
             col_stype=TaichiSimulation3DIntegral.Layout_AoS,
             tmi_projection=self.tmi_projection,
-        ).dpred(model)
+        ).dpred(model, progress=progress.progressbar)
 
         if self.store_sensitivities == "forward_only":
             kernel = kernel.ravel()

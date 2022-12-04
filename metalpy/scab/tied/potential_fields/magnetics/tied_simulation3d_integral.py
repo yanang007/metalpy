@@ -3,6 +3,7 @@ from typing import Union, Iterable
 
 import numpy as np
 import taichi as ti
+import tqdm
 
 from metalpy.utils.taichi import ti_kernel, ti_cfg, ti_ndarray, ti_func, ti_data_oriented, ti_index
 from metalpy.utils.type import ensure_as_iterable, not_none_or_default
@@ -88,13 +89,17 @@ class TaichiSimulation3DIntegral:
         self.col_stype = col_stype
         self.model_type = model_type
 
-    def dpred(self, model=None):
+    def dpred(self,
+              model: np.ndarray = None,
+              progress: tqdm.tqdm = None):
         """计算正演结果
 
         Parameters
         ----------
         model
             模型参数
+        progress
+            tqdm进度条对象
 
         Returns
         -------
@@ -116,19 +121,19 @@ class TaichiSimulation3DIntegral:
         model = not_none_or_default(model, supplier=lambda: np.empty(3, dtype=np.int8))
 
         if self.model_type == self.MType_Scalar:
-            n_col = self.n_cells
+            n_cols = self.n_cells
         else:
-            n_col = self.n_cells * 3
+            n_cols = self.n_cells * 3
             model = model.reshape(-1, 3)
 
         if forward_only:
-            n_col = 1
+            n_cols = 1
 
         n_rows = sum(receiver.n_rows for receiver in self.receivers)
         if is_cpu:
-            ret = np.empty((n_rows, n_col), dtype=np.float64)
+            ret = np.empty((n_rows, n_cols), dtype=np.float64)
         else:
-            ret = ti_ndarray(dtype=ti.f64, shape=(n_rows, n_col))
+            ret = ti_ndarray(dtype=ti.f64, shape=(n_rows, n_cols))
 
         start_row = 0
         for receiver in self.receivers:
