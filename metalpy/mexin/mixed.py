@@ -28,11 +28,17 @@ class MixinManager:
         self._mixins[mixin_type] = obj
         obj.post_apply(target)
 
-    def get(self, mixin_type):
+    def get(self, mixin_type, sentinel=False):
         if mixin_type in self._mixins:
             return self._mixins[mixin_type]
         else:
-            return NO_MIXIN
+            if sentinel:
+                return NO_MIXIN
+            else:
+                return None
+
+    def get_mixin_or_sentinel(self, mixin_type):
+        return self.get(mixin_type, sentinel=True)
 
     def bind_method(self, method, name=None):
         # TODO: 引入注解来标记是否需要替换，或者标记替换别的目标

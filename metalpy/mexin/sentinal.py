@@ -3,7 +3,7 @@ class Sentinel:
         pass
 
     def __getattr__(self, item):
-        return lambda *args, **kwargs: None
+        return self
 
     def __call__(self, *args, **kwargs):
         pass

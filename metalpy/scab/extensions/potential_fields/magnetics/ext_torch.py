@@ -70,7 +70,7 @@ class TorchedImpl(Mixin):
                                     components.items()}, )
             kernels.append(kernel)
 
-            self.mixins.get(Progress).update(len(receivers))
+            self.mixins.get_mixin_or_sentinel(Progress).update(len(receivers))
 
         kernel = torch.vstack(kernels)
         model = create_tensor(self.model)
