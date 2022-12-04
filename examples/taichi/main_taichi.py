@@ -8,7 +8,7 @@ from discretize.utils import mkvc
 from numpy.testing import assert_almost_equal
 
 import metalpy
-from metalpy.scab import simpeg_patched
+from metalpy.scab import simpeg_patched, Progressed
 from metalpy.scab.modelling.scene import Scene
 from metalpy.scab.modelling.shapes import Ellipsoid
 from metalpy.scab.utils.misc import define_inducing_field
@@ -30,7 +30,7 @@ def main():
     scalar_model = np.ones(n_active) * mag_susc
     vector_model = mkvc(np.c_[scalar_model, scalar_model * 0.5, scalar_model * 1.5])
 
-    n_x_grids, n_y_grids = 101, 101
+    n_x_grids, n_y_grids = 101, 11
     obsx, obsy, obsz = np.meshgrid(np.linspace(b0[0], b1[0], n_x_grids), np.linspace(b0[1], b1[1], n_y_grids), 20)
     obsx, obsy, obsz = mkvc(obsx), mkvc(obsy), mkvc(obsz)
     obs = np.c_[obsx, obsy, obsz]
@@ -67,8 +67,10 @@ def main():
 
         return simulation.dpred(model)
 
+    taichi_patches = [metalpy.scab.Tied('cpu'), Progressed()]
+
     with timer:
-        dpred_ti = test_forward('ram', 'scalar', metalpy.scab.Tied('cpu'))
+        dpred_ti = test_forward('ram', 'scalar', *taichi_patches)
     print(timer)
 
     with timer:
@@ -78,7 +80,7 @@ def main():
     assert_almost_equal(dpred_ti, dpred_raw, decimal=3)
 
     with timer:
-        dpred_ti = test_forward('forward_only', 'scalar', metalpy.scab.Tied('cpu'))
+        dpred_ti = test_forward('forward_only', 'scalar', *taichi_patches)
     print(timer)
 
     with timer:
@@ -88,7 +90,7 @@ def main():
     assert_almost_equal(dpred_ti, dpred_raw, decimal=3)
 
     with timer:
-        dpred_ti = test_forward('ram', 'vector', metalpy.scab.Tied('cpu'))
+        dpred_ti = test_forward('ram', 'vector', *taichi_patches)
     print(timer)
 
     with timer:
@@ -98,7 +100,7 @@ def main():
     assert_almost_equal(dpred_ti, dpred_raw, decimal=3)
 
     with timer:
-        dpred_ti = test_forward('forward_only', 'vector', metalpy.scab.Tied('cpu'))
+        dpred_ti = test_forward('forward_only', 'vector', *taichi_patches)
     print(timer)
 
     with timer:
