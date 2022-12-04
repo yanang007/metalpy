@@ -140,13 +140,23 @@ class TaichiSimulation3DIntegral:
         monitor = None
         if progress is not None:
             progress.reset(total=n_rows * n_cols)
-            check_start_row = 0
-            ending_row = 0
-            processed = 0
+
+            # 用于配合正演的分批计算
+            check_start_row = 0  # 该批正演的起点行号
+            ending_row = 0  # 该批正演的终点行号
+            processed = 0  # 已经处理的元素个数
+
+            # 假设1: 计算出的值在绝大多数情况下不为0
+            # 假设2: 因为正演算子是按行优先顺序计算的，绝大多数情况下最后一列的计算会在之前所有元素同时或之后完成的
+            # 因此可以通过监视线程读取返回值矩阵ret的最后一列来估算进度，将单次估测复杂度从O(RC)降低到O(R)
+            # 另: 若正演算子按列优先，则可以监视最后一行，保证监控变量的内存邻近，但是这会导致正演计算效率下降，因此未采用
             monitor = ValueObserver(lambda: processed + np.count_nonzero(ret[check_start_row:ending_row, -1]) * n_cols,
                                     lambda dx: progress.update(dx),
                                     interval=0.5)
+
             if is_cpu:
+                # GPU版本暂无法通过该方法实现，因此在下面通过sync手动每批更新一次
+                # CPU版本则启动监视线程
                 monitor.start()
 
         start_row = 0
@@ -156,7 +166,8 @@ class TaichiSimulation3DIntegral:
 
             # TODO: 由于Taichi目前采用i32作为索引类型，
             #  主循环使用的ti.ndrange也会受限于这个限制，
-            #  因此需要分批处理
+            #  因此需要分批处理，如果后续Taichi支持i64索引类型，则可以去掉这个限制
+            # TODO: 对于GPU版，可能需要基于GPU显存大小进行批次划分
             n_rx_rows = receiver.n_rows
             n_batches = int(np.ceil((n_rx_rows * self.n_cells) / np.iinfo(np.int32).max))
 
@@ -170,10 +181,11 @@ class TaichiSimulation3DIntegral:
                 section_rows = rx_locs.shape[0] * n_components
 
                 if monitor is not None:
-                    # 进度判定行区间
+                    # 计算进度判定行区间
+                    # 区间的更新和已处理元素的更新需要同时进行，防止observer给出错误结果
                     ending_row += section_rows
                     check_start_row = ending_row - section_rows
-                    processed = start_row * self.n_cells  # 防止在尾处理和到新的迭代前进度条数值错误
+                    processed = start_row * n_cols
 
                 self._kernel_matrix_forward(
                     xn=self.xn, yn=self.yn, zn=self.zn,
@@ -187,7 +199,9 @@ class TaichiSimulation3DIntegral:
                 start_row += section_rows
 
                 if monitor is not None:
-                    monitor.sync(start_row * self.n_cells)
+                    # 同步正确进度，防止observer读取不及时，统一进度
+                    # 并且在GPU版中用于更新进度
+                    monitor.sync(start_row * n_cols)
 
         if monitor is not None:
             monitor.stop()
