@@ -12,13 +12,7 @@ class Progress(Mixin):
         super().__init__(this)
         self.progressbar = tqdm.tqdm(total=len(this.survey.receiver_locations))
         self.progressbar.clear()
-        self.manual_update = False  # 指示是否有其它插件在手动更新进度条
-
-        # TODO: 引入一套新的注解来支持不同的mixin方法注入
-        @after(this, 'evaluate_integral')
-        def wrapper(_, *args, **kwargs):
-            if not self.manual_update:
-                self.progressbar.update(1)
+        self.manual_update = True  # 指示是否有其它插件在手动更新进度条
 
     @property
     def progressbar(self):
@@ -47,4 +41,7 @@ class Progressed(Patch, DistributeOnce):
         super().__init__()
 
     def apply(self):
+        if len(self.context.get_patches()) == 1:
+            raise RuntimeError("Progressed patch cannot be used alone due to SimPEG's design")
+
         self.add_mixin(BaseSimulation, Progress)
