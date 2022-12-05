@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 import pyamg
 import scipy.sparse as sp
@@ -87,38 +89,105 @@ def forward(receiver_locations: np.ndarray,
             zn: np.ndarray,
             base_cell_sizes: np.ndarray,
             susc_model: np.ndarray, ):
-    if ti_cfg().arch == ti.cpu:
-        method = forward_cpu
+    mat_size = receiver_locations.shape[0] * 3 * xn.shape[0] * 3
+
+    if mat_size > np.iinfo(np.int32).max:
+        method = partial(forward_seperated, direct_to_host=False)
+    elif ti_cfg().arch == ti.cpu:
+        method = partial(forward_integrated, is_cpu=True)
     elif ti_test_snode_support():
-        method = forward_gpu
+        method = partial(forward_seperated, direct_to_host=True)
     else:
         print("Current GPU doesn't support SNode, fall back to legacy implementation.")
-        method = forward_gpu_legacy
+        method = partial(forward_integrated, is_cpu=False)
 
     return method(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model)
 
 
-def forward_cpu(receiver_locations: np.ndarray,
-                xn: np.ndarray,
-                yn: np.ndarray,
-                zn: np.ndarray,
-                base_cell_sizes: np.ndarray,
-                susc_model: np.ndarray, ):
+def forward_integrated(
+        receiver_locations: np.ndarray,
+        xn: np.ndarray,
+        yn: np.ndarray,
+        zn: np.ndarray,
+        base_cell_sizes: np.ndarray,
+        susc_model: np.ndarray,
+        is_cpu: bool
+):
+    """该函数直接计算核矩阵
+
+    Parameters
+    ----------
+    receiver_locations
+        观测点
+    xn, yn, zn
+        网格边界
+    base_cell_sizes
+        网格最小单元大小
+    susc_model
+        磁化率模型
+    is_cpu
+        是否是CPU架构，否则需要在对应设备上分配返回值矩阵
+
+    Notes
+    -----
+        优势：
+        1. 简单直观
+
+        缺陷：
+        1. 存在taichi的int32索引限制
+    """
     nC = xn.shape[0]
     nObs = receiver_locations.shape[0]
-    A = np.empty((3 * nObs, 3 * nC), dtype=np.float64)
+
+    if is_cpu:
+        A = np.empty((3 * nObs, 3 * nC), dtype=np.float64)
+    else:
+        A = ti_ndarray(dtype=ti.f64, shape=(3 * nObs, 3 * nC))
+
     kernel_matrix_forward(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model,
                           *[0] * 9, A, True)
 
-    return A
+    if is_cpu:
+        return A
+    else:
+        return A.to_numpy()
 
 
-def forward_gpu(receiver_locations: np.ndarray,
-                xn: np.ndarray,
-                yn: np.ndarray,
-                zn: np.ndarray,
-                base_cell_sizes: np.ndarray,
-                susc_model: np.ndarray, ):
+def forward_seperated(
+        receiver_locations: np.ndarray,
+        xn: np.ndarray,
+        yn: np.ndarray,
+        zn: np.ndarray,
+        base_cell_sizes: np.ndarray,
+        susc_model: np.ndarray,
+        direct_to_host: bool,
+):
+    """该函数将矩阵分为9个部分，计算后再拼接，从而实现一些优化
+
+    Parameters
+    ----------
+    receiver_locations
+        观测点
+    xn, yn, zn
+        网格边界
+    base_cell_sizes
+        网格最小单元大小
+    susc_model
+        磁化率模型
+    direct_to_host
+        是否通过kernel将结果直接zero-copy地复制到待返回的numpy数组
+
+    Notes
+    -----
+        优势：
+        1. 可以绕过最大索引为的int32限制
+        2. 可以使用AoS提高内存近邻性
+
+        缺陷：
+        1. 如果是在CPU架构上允许，由于会同时分配返回值矩阵和计算用的9个矩阵组，导致内存占用相比forward翻倍
+        2. 如果启用direct_to_host会导致在一些旧GPU上无法使用，并且direct_to_host仍然无法绕过taichi的int32索引限制
+        3. 如果不启用direct_to_host，则可以规避索引限制，但是会导致额外 sizeof(mat) / 9 的内存overhead
+    """
     with ti_FieldsBuilder() as builder:
         nC = xn.shape[0]
         nObs = receiver_locations.shape[0]
@@ -136,24 +205,13 @@ def forward_gpu(receiver_locations: np.ndarray,
 
         for i in range(3):
             for j in range(3):
-                tensor_to_ext_arr(Tmat[i * 3 + j], A, i, 3, j, 3)
+                if direct_to_host:
+                    tensor_to_ext_arr(Tmat[i * 3 + j], A, i, 3, j, 3)
+                else:
+                    a = Tmat[i * 3 + j].to_numpy()
+                    A[i::3, j::3] = a
 
     return A
-
-
-def forward_gpu_legacy(receiver_locations: np.ndarray,
-                       xn: np.ndarray,
-                       yn: np.ndarray,
-                       zn: np.ndarray,
-                       base_cell_sizes: np.ndarray,
-                       susc_model: np.ndarray, ):
-    nC = xn.shape[0]
-    nObs = receiver_locations.shape[0]
-    A = ti_ndarray(dtype=ti.f64, shape=(3 * nObs, 3 * nC))
-    kernel_matrix_forward(receiver_locations, xn, yn, zn, base_cell_sizes, susc_model,
-                          *[0] * 9, A, True)
-
-    return A.to_numpy()
 
 
 @ti_kernel
