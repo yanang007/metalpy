@@ -48,7 +48,7 @@ simulation = simulation.Simulation3DIntegral(
     mesh=mesh,
     model_type="scalar",
     chiMap=model_map,
-    actInd=active_ind,
+    ind_active=active_ind,
     store_sensitivities="forward_only",
 )
     </pre></td>
@@ -76,7 +76,7 @@ simulation = simulation.Simulation3DIntegral.**_parallel_**(
     mesh=mesh,
     model_type="scalar",
     chiMap=model_map,
-    actInd=active_ind,
+    ind_active=active_ind,
     store_sensitivities="forward_only",
     **_executor=executor_**,
 )

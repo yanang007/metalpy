@@ -100,12 +100,12 @@ class DistributedSimulation(LazyClassFactory):
 
     @staticmethod
     def auto_decompress_simulation(sim, ind_future):
-        sim['actInd'] = blosc2.unpack_array2(ind_future)
+        sim['ind_active'] = blosc2.unpack_array2(ind_future)
         return sim
 
     def compress_model(self, sim_delegate, model):
         """用于压缩模型，以减少传输量
-        主要包含model和simulation里的actInd
+        主要包含model和simulation里的ind_active
         TODO: 有需要时可能也要压缩simulation中的mesh
 
         :param sim_delegate: 仿真类构造器
@@ -118,10 +118,10 @@ class DistributedSimulation(LazyClassFactory):
             compressed_model = self.executor.scatter(compressed_model)
             model = self.executor.submit(blosc2.unpack_array2, compressed_model)
 
-        if sys.getsizeof(sim_delegate['actInd']) > 1024 * 1024:
-            compressed_act_ind = blosc2.pack_array2(sim_delegate['actInd'])
+        if sys.getsizeof(sim_delegate['ind_active']) > 1024 * 1024:
+            compressed_act_ind = blosc2.pack_array2(sim_delegate['ind_active'])
             compressed_act_ind = self.executor.scatter(compressed_act_ind)
-            sim_delegate['actInd'] = 0
+            sim_delegate['ind_active'] = 0
 
             sim_delegate = self.executor.submit(self.auto_decompress_simulation, sim_delegate, compressed_act_ind)
 
@@ -147,7 +147,8 @@ class DistributedSimulation(LazyClassFactory):
                     receiver_list=receiver_list_container
                 ))
 
-            simulation = simulation_delegate.construct(survey=survey, model=model)
+            simulation = simulation_delegate.construct(survey=survey)
+            simulation.model = model
 
         return simulation.linear_operator()
 

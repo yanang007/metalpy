@@ -84,7 +84,7 @@ def main(grid_size, gpu=False):
             mesh=mesh,
             model_type="vector",
             chiMap=model_map,
-            actInd=active_cells,
+            ind_active=active_cells,
             store_sensitivities="ram",
         )
 
