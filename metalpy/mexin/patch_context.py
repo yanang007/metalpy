@@ -19,7 +19,7 @@ class PatchContext:
         self.mixin_patches = []
 
     def __enter__(self):
-        self.lock.acquire()  # 防止多线程环境下造成patch混乱
+        PatchContext.lock.acquire()  # 防止多线程环境下造成patch混乱
 
         for patch in self.__get_patches():
             patch.bind_context(self)
