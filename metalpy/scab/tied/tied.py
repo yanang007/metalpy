@@ -6,6 +6,7 @@ from metalpy.utils.taichi import ti_prepare, ti_arch
 from metalpy.utils.type import get_params_dict, get_full_qualified_class_name, get_or_default, get_class_name
 
 from .potential_fields.magnetics.simulation import TiedSimulation3DIntegralMixin
+from ..distributed.policies import Distributable
 
 implementations = {
     'SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral': TiedSimulation3DIntegralMixin,
@@ -45,7 +46,7 @@ class TaichiContext(Mixin):
         this.mixins.add(impl)
 
 
-class Tied(Patch):
+class Tied(Patch, Distributable):
     def __init__(self, arch=None, max_cpu_threads=None):
         super().__init__()
         self.params = get_params_dict(arch=arch, max_cpu_threads=max_cpu_threads)
