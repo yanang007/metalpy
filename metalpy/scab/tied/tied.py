@@ -1,3 +1,5 @@
+import os
+
 from SimPEG.simulation import BaseSimulation
 
 from metalpy.mexin import Mixin
@@ -14,7 +16,7 @@ implementations = {
 
 
 class TaichiContext(Mixin):
-    def __init__(self, this, arch=None, max_cpu_threads=None):
+    def __init__(self, this, arch=None, max_cpu_threads=None, **kwargs):
         """初始化taichi上下文
 
         Parameters
@@ -31,8 +33,14 @@ class TaichiContext(Mixin):
         if arch is not None:
             params['arch'] = ti_arch(arch)
         if max_cpu_threads is not None:
+            if max_cpu_threads < 0:
+                # 需要注意taichi目前使用的为虚拟核心数 (taichi/program/compile_config.cpp)
+                # cpu_max_num_threads = std::thread::hardware_concurrency();
+                # 因此这里使用python自带的cpu_count()，而不是psutil的物理核心数，和taichi保证一致
+                # 考虑到超线程的存在，-1可能仍然会导致计算机满载
+                max_cpu_threads = os.cpu_count() + max_cpu_threads
             params['cpu_max_num_threads'] = max_cpu_threads
-        ti_prepare(**params)
+        ti_prepare(**params, **kwargs)
 
     def post_apply(self, this):
         type_name = get_class_name(this)
@@ -47,12 +55,10 @@ class TaichiContext(Mixin):
 
 
 class Tied(Patch, Distributable):
-    def __init__(self, arch=None, max_cpu_threads=None):
+    def __init__(self, arch=None, max_cpu_threads=None, **kwargs):
         super().__init__()
-        self.params = get_params_dict(arch=arch, max_cpu_threads=max_cpu_threads)
+        ti_reset()
+        self.params = get_params_dict(arch=arch, max_cpu_threads=max_cpu_threads, **kwargs)
 
     def apply(self):
         self.add_mixin(BaseSimulation, TaichiContext, **self.params)
-
-    def rollback(self):
-        ti_reset()
