@@ -8,8 +8,8 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 
 from forward import setup_cuboids_model
-from metalpy.mepa import LinearExecutor, ProcessExecutor
-from metalpy.scab import simpeg_patched, Progressed
+from metalpy.mepa import LinearExecutor
+from metalpy.scab import simpeg_patched, Progressed, Tied
 from metalpy.scab.demag import Demagnetization
 from metalpy.scab.demag.factored_demagnetization import FactoredDemagnetization
 from metalpy.scab.demag.utils import get_prolate_spheroid_demag_factor
@@ -17,7 +17,7 @@ from metalpy.scab.modelling.shapes import Ellipsoid
 from metalpy.scab.utils.misc import define_inducing_field
 
 from config import get_exec_config
-from metalpy.utils.taichi import ti_prepare
+from metalpy.utils.taichi import ti_prepare, ti_config
 from metalpy.utils.time import Timer
 
 
@@ -48,19 +48,17 @@ def main(grid_size, gpu=False):
         demaged_model = demag.dpred(model, source_field=source_field)
 
         # numerical demagnetization factor
-        with simpeg_patched(Progressed()):
+        with ti_config(arch=ti.gpu if gpu else ti.cpu):
             demag2 = Demagnetization(
                 source_field=source_field,
                 mesh=mesh,
                 active_ind=active_cells)
-
-        demaged_model2 = demag2.dpred(model)
+            demaged_model2 = demag2.dpred(model)
 
     print(f"Solving: {timer}")
-
     print("MagModel MAPE(%): ", (abs(demaged_model2 - demaged_model) / abs(demaged_model)).mean() * 100)
 
-    with simpeg_patched(Progressed()):
+    with simpeg_patched(Tied(), Progressed()):
         obsx = np.arange(-c, c + 1, 1) * 2
         obsy = np.arange(-c, c + 1, 1) * 2
         obsx, obsy = np.meshgrid(obsx, obsy)
@@ -99,7 +97,7 @@ if __name__ == '__main__':
 
     workers = [w for w in executor.get_workers() if 'large-mem' in w.group]
     if len(workers) == 1:
-        f = executor.submit(main, [1.2, 1.2, 0.8], workers=workers)
+        f = executor.submit(main, [1.2, 1.2, 0.6], workers=workers)
     else:
         gpu = False
         if executor.is_local():
