@@ -2,7 +2,7 @@ from SimPEG.simulation import BaseSimulation
 
 from metalpy.mexin import Mixin
 from metalpy.mexin import Patch
-from metalpy.utils.taichi import ti_prepare, ti_arch
+from metalpy.utils.taichi import ti_prepare, ti_arch, ti_reset
 from metalpy.utils.type import get_params_dict, get_full_qualified_class_name, get_or_default, get_class_name
 
 from .potential_fields.magnetics.simulation import TiedSimulation3DIntegralMixin
@@ -53,3 +53,6 @@ class Tied(Patch, Distributable):
 
     def apply(self):
         self.add_mixin(BaseSimulation, TaichiContext, **self.params)
+
+    def rollback(self):
+        ti_reset()

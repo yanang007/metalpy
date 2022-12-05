@@ -1,3 +1,4 @@
+import copy
 import functools
 import os
 
@@ -11,11 +12,12 @@ from .file import make_cache_directory, make_cache_file
 
 ti_cache_prefix = 'taichi_cache'
 
-ti_args = {
+ti_default_args = {
     'arch': ti.cpu,
     'offline_cache': True,
     'offline_cache_file_path': make_cache_directory(ti_cache_prefix),
 }
+ti_args = copy.deepcopy(ti_default_args)
 ti_inited = False
 
 
@@ -28,6 +30,38 @@ def ti_init_once():
     if not ti_inited:
         ti.init(**ti_args)
         ti_inited = True
+
+
+def ti_reset():
+    """重置taichi的配置参数，使得下次调用涉及kernel的函数时会重新初始化
+
+    同时也用于解决taichi目前没有gc导致内存泄露的问题
+    taichi-dev/taichi#6803: Improve garbage collection
+    https://github.com/taichi-dev/taichi/issues/6803
+
+    Notes
+    -----
+        reset会在下次init时生效，因此不会立刻解决内存泄露的问题
+    """
+    global ti_inited, ti_args
+    ti_args = copy.deepcopy(ti_default_args)
+    ti_inited = False
+
+
+class WrappedTaichiContext:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def __enter__(self):
+        ti_prepare(**self.kwargs)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ti_reset()
+
+
+def ti_config(**kwargs):
+    return WrappedTaichiContext(**kwargs)
 
 
 def ti_arch(arch):
