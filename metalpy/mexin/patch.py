@@ -5,27 +5,36 @@ from .mixin import Mixin
 
 
 class Patch(ABC):
-    """用于在全局上下文中劫持与注入python-based方法，继承类必须重写apply方法
-    Note
-    ----
-        所有方法必须保持可重入，即多次调用apply方法，必须保证结果一致
-        rollback会消除commit的影响
-        post_rollback会消除pre_apply和apply的影响
-
-        执行时PatchContext会按如下顺序调用方法：
-            bind_context: 绑定上下文
-            pre_apply: 在apply之前调用，用于初始化一些变量
-            *apply: 在这里添加patch                      -- 子类必须实现 --
-            commit: 在这里进行一些commit操作               -- 如果要改写，应该需要调用基类方法 --
-            rollback: 在这里进行一些rollback操作
-            post_rollback: 在rollback之后调用，用于清理一些变量
-            unbind_context: 解绑上下文
-
-    See Also
-    --------
-        PatchContext
-    """
     def __init__(self):
+        """用于在全局上下文中劫持与注入python-based方法，继承类必须重写apply方法
+
+        Notes
+        -----
+            所有方法必须保持可重入，即多次调用apply方法，必须保证结果一致
+            rollback会消除commit的影响
+            post_rollback会消除pre_apply和apply的影响
+
+
+            执行时PatchContext会按如下顺序调用方法：
+
+            **bind_context**: 绑定上下文
+
+            **pre_apply**: 在apply之前调用，用于初始化一些变量
+
+            **apply**: 在这里添加patch，子类必须实现
+
+            **commit**: 在这里进行patch的应用，如果要改写，应该需要调用基类方法
+
+            **rollback**: 在这里进行一些rollback操作
+
+            **post_rollback**: 在rollback之后调用，用于清理一些变量
+
+            **unbind_context**: 解绑上下文
+
+        See Also
+        --------
+            PatchContext: patch上下文
+        """
         self.recoverable_injs: list[tuple[RecoverableInjector, tuple, dict]] = None
         self.__mixin_injs: list[tuple[RecoverableInjector, tuple, dict]] = None
         self.mixins: dict[str, list[tuple[Mixin, tuple, dict]]] = None
@@ -47,14 +56,14 @@ class Patch(ABC):
         if len(self.__mixin_injs) == 0:
             # 保证Patch可重入
             for target_type, mixins in self.mixins.items():  # 将混入mixin的代码插入到对应类的构造函数
-                self.__mixin_injs.append((after(target_type, '__init__'), (self.__apply_mixins(mixins),), {}))
+                self.__mixin_injs.append((after(target_type.__init__), (self.__apply_mixins(mixins),), {}))
 
         for inj, args, kwargs in self.__get_injs():
             inj(*args, **kwargs)
 
     @staticmethod
     def __apply_mixins(mixins):
-        def apply_mixins(this, *orig_args, **orig_kwargs):
+        def apply_mixins(this, *_, **__):
             for mixin_type, args, kwargs in mixins:
                 this.mixins.add(mixin_type, *args, **kwargs)
         return apply_mixins

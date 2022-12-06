@@ -48,7 +48,7 @@ class MixinManager:
         target = self.target
         if hasattr(target, name):
             # 如果在目标存在同名方法则替换
-            method = replaces(target, name, keep_orig=False)(method)
+            method = replaces(getattr(target, name), keep_orig=False)(method)
         else:
             method = extends(target, name)(method)
 
