@@ -1,6 +1,4 @@
-import numpy as np
 import pyvista as pv
-from discretize import TensorMesh
 
 from metalpy.scab.modelling.scene import Scene
 from metalpy.scab.modelling.shapes import Cuboid, Prism, Ellipsoid, Tunnel, Obj2
@@ -16,10 +14,8 @@ def main():
         Obj2('../obj/stl_models/mine.stl', scale=0.03).translated(1, -2, -1),
     )
 
-    mesh = TensorMesh([[(0.2, 50)], [(0.2, 50)], [(0.2, 50)]], origin=(-5, -5, -5))
-    ind_active = scene.build(mesh)
-    grids = mesh.to_vtk(models={'active': ind_active.astype(np.int32)})
-    grids.set_active_scalars('active')
+    mesh, ind_active = scene.build(grid_size=0.2)
+    grids = scene.mesh_to_polydata(mesh, ind_active)
 
     p = pv.Plotter(shape=(1, 3))
 

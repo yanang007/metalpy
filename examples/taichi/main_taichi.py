@@ -3,7 +3,6 @@ import math
 import numpy as np
 from SimPEG import maps
 from SimPEG.potential_fields import magnetics
-from discretize import TensorMesh
 from discretize.utils import mkvc
 from numpy.testing import assert_almost_equal
 
@@ -20,11 +19,9 @@ def main():
 
     bounds = scene.bounds
     b0, b1 = bounds[::2], bounds[1::2]
-    sizes = b1 - b0
     grid_size = 0.5
-    mesh = TensorMesh([[(grid_size, math.ceil(size / grid_size))] for size in sizes], origin=bounds[::2])
+    mesh, ind_active = scene.build(grid_size=grid_size)
 
-    ind_active = scene.build(mesh)
     n_active = np.count_nonzero(ind_active)
     mag_susc = 1
     scalar_model = np.ones(n_active) * mag_susc
