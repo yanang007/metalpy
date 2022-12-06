@@ -18,7 +18,7 @@ from metalpy.utils.time import Timer
 def main():
     scene = Scene.of(Ellipsoid.spheroid(2, 8, polar_axis=0))
 
-    bounds = scene.bounds()
+    bounds = scene.bounds
     b0, b1 = bounds[::2], bounds[1::2]
     sizes = b1 - b0
     grid_size = 0.5

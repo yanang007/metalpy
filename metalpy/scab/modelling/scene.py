@@ -42,6 +42,7 @@ class Scene:
 
         return obj
 
+    @property
     def bounds(self):
         return bounding_box_of(self.shapes())
 
