@@ -20,7 +20,7 @@ def main():
     bounds = scene.bounds
     b0, b1 = bounds[::2], bounds[1::2]
     grid_size = 0.5
-    mesh, ind_active = scene.build(grid_size=grid_size)
+    mesh, ind_active = scene.build(cell_size=grid_size)
 
     n_active = np.count_nonzero(ind_active)
     mag_susc = 1

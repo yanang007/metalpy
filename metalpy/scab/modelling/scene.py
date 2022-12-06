@@ -130,15 +130,15 @@ class Scene:
         else:
             return models_dict
 
-    def create_mesh(self, grid_size=None, n_grids=None):
+    def create_mesh(self, cell_size=None, n_cells=None) -> Union[TensorMesh]:
         """根据场景边界构建网格
 
         Parameters
         ----------
-        grid_size : number or array(3,)
-            网格大小
-        n_grids : number or array(3,)
-            网格数量
+        cell_size : number or array(3,)
+            网格长宽高相等或分别定义网格x, y, z方向宽度大小
+        n_cells : number or array(3,)
+            总网格数或x, y, z方向网格数
 
         Returns
         -------
@@ -147,33 +147,39 @@ class Scene:
         Notes
         -----
             原点是场景的边界的最小值。
-            若指定grid_size，则边界点保证大于场景边界；
-            若指定n_grids，则边界点是场景的边界的最大值。
+            若指定cell_size，则边界点保证大于场景边界；
+            若指定n_cells，则边界点是场景的边界的最大值。
+
+            若n_cells为单个值，则用于指定总网格数，保证生成的网格数小于等于该值。
         """
-        if grid_size is not None:
-            if not isinstance(grid_size, Iterable):
-                grid_size = [grid_size] * 3
-            grid_size = np.asarray(grid_size)
+        if cell_size is not None:
+            if not isinstance(cell_size, Iterable):
+                cell_size = [cell_size] * 3
+            cell_size = np.asarray(cell_size)
             bounds = self.bounds
-            n_grids = np.ceil((bounds[1::2] - bounds[::2]) / grid_size).astype(int)
+            n_cells = np.ceil((bounds[1::2] - bounds[::2]) / cell_size).astype(int)
         else:
-            if not isinstance(n_grids, Iterable):
-                n_grids = [n_grids] * 3
-            n_grids = np.asarray(n_grids)
             bounds = self.bounds
-            grid_size = (bounds[1::2] - bounds[::2]) / n_grids
+            sizes = bounds[1::2] - bounds[::2]
+            if not isinstance(n_cells, Iterable):
+                avg_grids = (n_cells / np.prod(sizes)) ** (1 / 3)
+                n_cells = (avg_grids * sizes).astype(int)
+                cell_size = [1 / avg_grids] * 3
+            else:
+                n_cells = np.asarray(n_cells)
+                cell_size = sizes / n_cells
 
-        return TensorMesh([[(d, n)] for d, n in zip(grid_size, n_grids)], origin=bounds[::2])
+        return TensorMesh([[(d, n)] for d, n in zip(cell_size, n_cells)], origin=bounds[::2])
 
-    def build(self, grid_size=None, n_grids=None, executor=None, progress=False):
+    def build(self, cell_size=None, n_cells=None, executor=None, progress=False):
         """根据给定的网格尺寸，构建场景的网格和模型，是create_mesh和build_model的组合
 
         Parameters
         ----------
-        grid_size : number or array(3,)
-            网格大小
-        n_grids : number or array(3,)
-            网格数量
+        cell_size : number or array(3,)
+            网格长宽高相等或分别定义网格x, y, z方向宽度大小
+        n_cells : number or array(3,)
+            总网格数或x, y, z方向网格数
         executor
             并行执行器
         progress
@@ -190,7 +196,7 @@ class Scene:
             Scene.create_mesh
             Scene.build_model
         """
-        mesh = self.create_mesh(grid_size=grid_size, n_grids=n_grids)
+        mesh = self.create_mesh(cell_size=cell_size, n_cells=n_cells)
         model = self.build_model(mesh, executor=executor, progress=progress)
 
         return mesh, model

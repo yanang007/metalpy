@@ -14,8 +14,15 @@ def test_build():
         models=[1, 2, 3, 4, 5],
     )
 
-    mesh1, model1 = scene.build(grid_size=0.2)
-    mesh2, model2 = scene.build(n_grids=[30, 30, 20])
+    ret = [
+        scene.build(cell_size=0.2),
+        scene.build(cell_size=[0.2, 0.2, 0.2]),
+        scene.build(n_cells=18000),
+        scene.build(n_cells=[30, 30, 20])
+    ]
+    ref_mesh, ref_model = ret[0]
 
-    assert_equal(mesh1.n_cells, mesh2.n_cells)
-    assert_equal(model1, model2)
+    for mesh, model in ret[1:]:
+        assert_equal(mesh.n_cells, ref_mesh.n_cells)
+        assert_equal(mesh.cell_centers, ref_mesh.cell_centers)
+        assert_equal(model, ref_model)
