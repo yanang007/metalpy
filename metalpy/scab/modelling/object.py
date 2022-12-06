@@ -9,7 +9,7 @@ class Object:
 
     def __init__(self,
                  shape: Shape3D,
-                 values: Union[dict[str, Any], Any],
+                 models: Union[dict[str, Any], Any],
                  mix_mode: Union[MixMode, Callable] = MixMode.Normal):
         """代表一个三维几何体图层
 
@@ -17,17 +17,17 @@ class Object:
         ----------
         shape
             三维几何体
-        values
+        models
             三维几何体的参数
         mix_mode
             混合模式，必须为MixMode枚举或自定义的混合函数，函数的参数见 Object.mix
         """
         self.shape = shape
-        if values is None:
-            values = True
-        if not isinstance(values, dict):
-            values = {Object.DEFAULT_KEY: values}
-        self.values = values
+        if models is None:
+            models = True
+        if not isinstance(models, dict):
+            models = {Object.DEFAULT_KEY: models}
+        self.models = models
 
         if isinstance(mix_mode, MixMode):
             self.mixer = MixMode.dispatch(mix_mode)
@@ -45,15 +45,15 @@ class Object:
         self._shape = val
 
     @property
-    def values(self) -> dict[str, Any]:
-        return self._values
+    def models(self) -> dict[str, Any]:
+        return self._models
 
-    @values.setter
-    def values(self, val: dict[str, Any]):
-        self._values = val
+    @models.setter
+    def models(self, val: dict[str, Any]):
+        self._models = val
 
     def items(self):
-        for k, v in self.values.items():
+        for k, v in self.models.items():
             yield k, v
 
     def mix(self, prev_layer, current_layer):
@@ -73,4 +73,4 @@ class Object:
         return self.mixer(prev_layer, current_layer)
 
     def __getitem__(self, item):
-        return self.values[item]
+        return self.models[item]

@@ -1,7 +1,9 @@
+import copy
 from typing import Any, Union, Iterable
 
 import numpy as np
 import tqdm
+from discretize import TensorMesh
 
 from metalpy.mepa import LinearExecutor
 from .object import Object
@@ -14,30 +16,30 @@ class Scene:
         self.objects: list[Object] = []
 
     @staticmethod
-    def of(*shapes: Shape3D, values: Union[Any, dict, list[Any], list[dict], None] = None):
+    def of(*shapes: Shape3D, models: Union[Any, dict, list[Any], list[dict], None] = None):
         ret = Scene()
-        if not isinstance(values, list):
-            values = [values] * len(shapes)
-        for shape, value in zip(shapes, values):
+        if not isinstance(models, list):
+            models = [models] * len(shapes)
+        for shape, value in zip(shapes, models):
             ret.append(shape, value)
 
         return ret
 
-    def append(self, shape: Shape3D, values: Union[dict[str, Any], Any]) -> Object:
+    def append(self, shape: Shape3D, models: Union[dict[str, Any], Any]) -> Object:
         """添加三维几何体
 
         Parameters
         ----------
         shape
             三维几何体
-        values
+        models
             三维几何体的参数
 
         Returns
         -------
             返回构造的三维几何体
         """
-        obj = Object(shape, values)
+        obj = Object(shape, models)
         self.objects.append(obj)
 
         return obj
@@ -48,7 +50,7 @@ class Scene:
 
     @staticmethod
     def build_mesh_worker(objects: list[Object], mesh, show_modeling_progress, worker_id):
-        values = {}
+        models = {}
         for obj in tqdm.tqdm(objects, position=0, leave=False, ncols=80) if show_modeling_progress else objects:
             shape = obj.shape
 
@@ -58,15 +60,15 @@ class Scene:
 
             for key, current_value in obj.items():
                 if ind.dtype == bool:
-                    current_layer = np.zeros_like(ind)
+                    current_layer = np.zeros_like(ind, dtype=type(current_value))
                     current_layer[ind] = current_value
                 else:
                     current_layer = ind * current_value
 
-                if key not in values:
-                    values[key] = current_layer
+                if key not in models:
+                    models[key] = current_layer
                 else:
-                    prev_layer = values[key]
+                    prev_layer = models[key]
                     filled_ind = prev_layer != 0  # TODO: 同上
                     overlapping_mask = filled_ind & current_mask
                     non_overlapping_mask = current_mask ^ overlapping_mask
@@ -77,12 +79,12 @@ class Scene:
                     )
                     prev_layer[non_overlapping_mask] = current_layer[non_overlapping_mask]
 
-        return values
+        return models
 
-    def build(self, mesh,
-              executor=None,
-              progress=False) -> Union[np.ndarray, dict[str, np.ndarray]]:
-        """构建模型网格
+    def build_model(self, mesh,
+                    executor=None,
+                    progress=False) -> Union[np.ndarray, dict[str, np.ndarray]]:
+        """在给定网格上构建模型
 
         Parameters
         ----------
@@ -119,14 +121,79 @@ class Scene:
             )
         executor.gather(futures)
 
-        values_dict = {}
+        models_dict = {}
         for key in futures[0].result().keys():
-            values_dict[key] = np.concatenate([future.result()[key] for future in futures])
+            models_dict[key] = np.concatenate([future.result()[key] for future in futures])
 
-        if len(values_dict) == 1 and Object.DEFAULT_KEY in values_dict:
-            return values_dict[Object.DEFAULT_KEY]
+        if len(models_dict) == 1 and Object.DEFAULT_KEY in models_dict:
+            return models_dict[Object.DEFAULT_KEY]
         else:
-            return values_dict
+            return models_dict
+
+    def create_mesh(self, grid_size=None, n_grids=None):
+        """根据场景边界构建网格
+
+        Parameters
+        ----------
+        grid_size : number or array(3,)
+            网格大小
+        n_grids : number or array(3,)
+            网格数量
+
+        Returns
+        -------
+            构建的网格
+
+        Notes
+        -----
+            原点是场景的边界的最小值。
+            若指定grid_size，则边界点保证大于场景边界；
+            若指定n_grids，则边界点是场景的边界的最大值。
+        """
+        if grid_size is not None:
+            if not isinstance(grid_size, Iterable):
+                grid_size = [grid_size] * 3
+            grid_size = np.asarray(grid_size)
+            bounds = self.bounds
+            n_grids = np.ceil((bounds[1::2] - bounds[::2]) / grid_size).astype(int)
+        else:
+            if not isinstance(n_grids, Iterable):
+                n_grids = [n_grids] * 3
+            n_grids = np.asarray(n_grids)
+            bounds = self.bounds
+            grid_size = (bounds[1::2] - bounds[::2]) / n_grids
+
+        return TensorMesh([[(d, n)] for d, n in zip(grid_size, n_grids)], origin=bounds[::2])
+
+    def build(self, grid_size=None, n_grids=None, executor=None, progress=False):
+        """根据给定的网格尺寸，构建场景的网格和模型，是create_mesh和build_model的组合
+
+        Parameters
+        ----------
+        grid_size : number or array(3,)
+            网格大小
+        n_grids : number or array(3,)
+            网格数量
+        executor
+            并行执行器
+        progress
+            是否显示进度条
+
+        Returns
+        -------
+            (网格，模型)
+            网格输出同create_mesh
+            模型输出同build_model
+
+        See Also
+        --------
+            Scene.create_mesh
+            Scene.build_model
+        """
+        mesh = self.create_mesh(grid_size=grid_size, n_grids=n_grids)
+        model = self.build_model(mesh, executor=executor, progress=progress)
+
+        return mesh, model
 
     def __iter__(self) -> Iterable[Object]:
         for obj in self.objects:
@@ -147,3 +214,23 @@ class Scene:
             ret.append(shape.to_polydata())
 
         return ret
+
+    @staticmethod
+    def mesh_to_polydata(mesh, models: Union[np.ndarray, dict[str, np.ndarray]]):
+        if not isinstance(models, dict):
+            models = {'active': models}
+        else:
+            models = copy.copy(models)
+
+        for key in models:
+            if models[key].dtype == bool:
+                models[key] = models[key].astype(np.int8)
+
+        grids = mesh.to_vtk(models=models)
+
+        for key in models:
+            # 将第一个model设为active
+            grids.set_active_scalars(key)
+            break
+
+        return grids
