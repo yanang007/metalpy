@@ -169,19 +169,18 @@ class DistributedSimulation(LazyClassFactory):
     def linear_operator(self, this):
         """LinearSimulation
         """
-        if self.store_sensitivities == 'disk':
-            sens_name = self.sensitivity_path + "sensitivity.npy"
+        n_cells = self.nC
+        if getattr(self, "model_type", None) == "vector":
+            n_cells *= 3
+        if self.store_sensitivities == "disk":
+            sens_name = os.path.join(self.sensitivity_path, "sensitivity.npy")
             if os.path.exists(sens_name):
                 # do not pull array completely into ram, just need to check the size
                 kernel = np.load(sens_name, mmap_mode="r")
-                nD = this.survey.nD
-                nC = this.nC
-                if kernel.shape == (nD, nC):
+                if kernel.shape == (self.survey.nD, n_cells):
                     print(f"Found sensitivity file at {sens_name} with expected shape")
                     kernel = np.asarray(kernel)
                     return kernel
-                else:
-                    print(f"Warning: found sensitivity file at {sens_name} with wrong shape, ignoring it")
 
         if PatchContext.lock.locked():
             raise AssertionError('Error: linear_operator must be called outside of PatchContext.')
