@@ -17,8 +17,10 @@ classifiers = [
 ]
 dependencies = [
     "distributed",
-    #"SimPEG",
+    #required by SCAB
+    #"SimPEG >= 0.18",
     #"discretize",
+    #"taichi >= 1.3.0",
     "tqdm",
     "numpy",
     "pandas",
@@ -26,6 +28,7 @@ dependencies = [
     "scikit-learn",
     "matplotlib",
     "psutil",
+    "pympler",
     #"pywin32",
     "properties",
     "colour",
