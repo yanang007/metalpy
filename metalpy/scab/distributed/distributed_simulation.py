@@ -7,7 +7,9 @@ import blosc2
 import numpy as np
 from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
+from discretize import TensorMesh
 from properties.utils import undefined
+from pympler.asizeof import asizeof
 
 from metalpy.mepa import Executor
 from metalpy.mexin import LazyClassFactory, PatchContext
@@ -42,12 +44,7 @@ class DistributedSimulation(LazyClassFactory):
 
         Notes
         -----
-            目前只用于len(receiver_list)==1的magnetics.simulation.Simulation3DIntegral，对于其它Simulation兼容性未知
-
-        Known Issues
-        ------------
-            如果在调用dpred之前未退出PatchContext，且executor为本地的LinearExecutor，那么会导致死锁
-
+            目前只用于magnetics.simulation.Simulation3DIntegral，对于其它Simulation兼容性未知
         """
 
         super().__init__(simulation_class, *args, **kwargs)
@@ -99,9 +96,14 @@ class DistributedSimulation(LazyClassFactory):
         self.sensitivity_path = pop_or_default(self.kwargs, 'sensitivity_path', "./sensitivity/")
 
     @staticmethod
-    def auto_decompress_simulation(sim, ind_future):
+    def auto_decompress_simulation(sim, ind_future, mesh_future):
         sim['ind_active'] = blosc2.unpack_array2(ind_future)
+        sim['mesh'] = mesh_future
         return sim
+
+    @staticmethod
+    def auto_decompress_mesh_h(compressed_mesh_defs):
+        return [blosc2.unpack_array2(ch) for ch in compressed_mesh_defs]
 
     def compress_model(self, sim_delegate, model):
         """用于压缩模型，以减少传输量
@@ -113,17 +115,30 @@ class DistributedSimulation(LazyClassFactory):
         :return: 压缩后的仿真类构造器和模型
         """
 
-        if sys.getsizeof(model) > 1024 * 1024:
+        if asizeof(model) > 1024 * 1024:
             compressed_model = blosc2.pack_array2(model)
             compressed_model = self.executor.scatter(compressed_model)
             model = self.executor.submit(blosc2.unpack_array2, compressed_model)
 
-        if sys.getsizeof(sim_delegate['ind_active']) > 1024 * 1024:
+        if asizeof(sim_delegate) > 1024 * 1024:
             compressed_act_ind = blosc2.pack_array2(sim_delegate['ind_active'])
             compressed_act_ind = self.executor.scatter(compressed_act_ind)
             sim_delegate['ind_active'] = 0
 
-            sim_delegate = self.executor.submit(self.auto_decompress_simulation, sim_delegate, compressed_act_ind)
+            mesh = sim_delegate['mesh']
+            del sim_delegate['mesh']
+            if isinstance(mesh, TensorMesh):
+                compressed_mesh_h = [blosc2.pack_array2(h) for h in mesh.h]
+                compressed_mesh_h = self.executor.submit(self.auto_decompress_mesh_h, compressed_mesh_h)
+                origin = mesh.origin
+                mesh_future = self.executor.submit(TensorMesh, h=compressed_mesh_h, origin=origin)
+            else:
+                mesh_future = self.executor.scatter(mesh)
+
+            sim_delegate = self.executor.submit(self.auto_decompress_simulation,
+                                                sim_delegate,
+                                                compressed_act_ind,
+                                                mesh_future)
 
         return sim_delegate, model
 

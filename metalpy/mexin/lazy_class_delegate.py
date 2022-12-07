@@ -76,3 +76,9 @@ class LazyClassFactory:
 
     def __setitem__(self, key, value):
         self.kwargs[key] = value
+
+    def __delitem__(self, key):
+        if key in self.kwargs:
+            del self.kwargs[key]
+        else:
+            del self.args[key]
