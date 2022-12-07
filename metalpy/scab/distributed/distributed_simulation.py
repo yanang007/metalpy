@@ -1,6 +1,5 @@
 import copy
 import os
-import sys
 
 import SimPEG
 import blosc2
@@ -9,7 +8,6 @@ from SimPEG.potential_fields import magnetics
 from SimPEG.simulation import BaseSimulation
 from discretize import TensorMesh
 from properties.utils import undefined
-from pympler.asizeof import asizeof
 
 from metalpy.mepa import Executor
 from metalpy.mexin import LazyClassFactory, PatchContext
@@ -114,6 +112,7 @@ class DistributedSimulation(LazyClassFactory):
         :param model: 模型
         :return: 压缩后的仿真类构造器和模型
         """
+        from pympler.asizeof import asizeof
 
         if asizeof(model) > 1024 * 1024:
             compressed_model = blosc2.pack_array2(model)
