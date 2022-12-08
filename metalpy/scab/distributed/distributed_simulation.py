@@ -164,7 +164,8 @@ class DistributedSimulation(LazyClassFactory):
             simulation = simulation_delegate.construct(survey=survey)
             simulation.model = model
 
-        return simulation.linear_operator()
+        ret = simulation.linear_operator()
+        return blosc2.pack_array2(ret)
 
     def linear_operator(self, this):
         """LinearSimulation
@@ -210,6 +211,7 @@ class DistributedSimulation(LazyClassFactory):
             futures.append(future)
 
         segments = self.executor.gather(futures)
+        segments = [blosc2.unpack_array2(seg) for seg in segments]
         kernel = np.concatenate(segments)
 
         if self.store_sensitivities == "disk":
