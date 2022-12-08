@@ -127,10 +127,14 @@ class DistributedSimulation(LazyClassFactory):
             mesh = sim_delegate['mesh']
             del sim_delegate['mesh']
             if isinstance(mesh, TensorMesh):
-                compressed_mesh_h = [blosc2.pack_array2(h) for h in mesh.h]
-                compressed_mesh_h = self.executor.submit(self.auto_decompress_mesh_h, compressed_mesh_h)
+                if asizeof(mesh.h) > 1024 * 1024:
+                    compressed_mesh_h = [blosc2.pack_array2(h) for h in mesh.h]
+                    mesh_h = self.executor.submit(self.auto_decompress_mesh_h, compressed_mesh_h)
+                else:
+                    mesh_h = mesh.h
+
                 origin = mesh.origin
-                mesh_future = self.executor.submit(TensorMesh, h=compressed_mesh_h, origin=origin)
+                mesh_future = self.executor.submit(TensorMesh, h=mesh_h, origin=origin)
             else:
                 mesh_future = self.executor.scatter(mesh)
 
@@ -164,8 +168,7 @@ class DistributedSimulation(LazyClassFactory):
             simulation = simulation_delegate.construct(survey=survey)
             simulation.model = model
 
-        ret = simulation.linear_operator()
-        return blosc2.pack_array2(ret)
+        return simulation.linear_operator()
 
     def linear_operator(self, this):
         """LinearSimulation
@@ -211,7 +214,6 @@ class DistributedSimulation(LazyClassFactory):
             futures.append(future)
 
         segments = self.executor.gather(futures)
-        segments = [blosc2.unpack_array2(seg) for seg in segments]
         kernel = np.concatenate(segments)
 
         if self.store_sensitivities == "disk":
