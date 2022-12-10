@@ -66,8 +66,8 @@ class DaskExecutor(Executor):
     def is_local(self):
         return False
 
-    def gather(self, futures):
-        return self.client.gather(futures)
+    def gather_single(self, future):
+        return self.client.gather(future)
 
     def scatter(self, data):
         return self.client.scatter(data)

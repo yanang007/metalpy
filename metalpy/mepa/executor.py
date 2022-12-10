@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from .task_allocator import TaskAllocator, SingleTaskAllocator
+from .utils import structured_traverse
 
 
 class Executor(ABC):
@@ -45,9 +46,54 @@ class Executor(ABC):
     def is_local(self):
         return True
 
-    @abstractmethod
     def gather(self, futures):
-        pass
+        """收集futures的结果
+
+        Parameters
+        ----------
+        futures
+            待收集的futures，可以为单个future也可以是future的Iterable或dict
+
+        Returns
+        -------
+            以原本结构构造的future结果
+
+        Notes
+        -----
+            子类需从gather和gather_single二选一实现
+
+        Examples
+        --------
+        >>> from operator import add
+        >>> from metalpy.mepa.linear_executor import LinearExecutor
+        >>> executor = LinearExecutor()
+        >>> f = executor.submit(add, 1, 2)
+        >>> executor.gather(f)
+        3
+        >>> executor.gather([f, [f], f])  # 支持列表
+        [3, [3], 3]
+        >>> executor.gather({'First': f, 'Second': [f, [f]]})  # 支持字典
+        {'First': 3, 'Second': [3, [3]]}
+        """
+        return structured_traverse(futures, lambda f: self.gather_single(f))
+
+    def gather_single(self, future):
+        """收集单个的结果
+
+        Parameters
+        ----------
+        future
+            待收集的future
+
+        Returns
+        -------
+            future的结果
+
+        Notes
+        -----
+            子类需从gather和gather_single二选一实现
+        """
+        return self.gather(future)
 
     def scatter(self, data):
         """

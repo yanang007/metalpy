@@ -1,4 +1,4 @@
-from concurrent.futures import ProcessPoolExecutor, wait, Future
+from concurrent.futures import Future
 from loky import get_reusable_executor
 
 import psutil
@@ -40,6 +40,5 @@ class ProcessExecutor(Executor):
     def is_local(self):
         return True
 
-    def gather(self, futures):
-        wait(futures)
-        return [future.result() for future in futures]
+    def gather_single(self, future):
+        return future.result()

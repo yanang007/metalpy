@@ -33,5 +33,5 @@ class LinearExecutor(Executor):
     def is_local(self):
         return True
 
-    def gather(self, futures):
-        return [future.result() for future in futures]
+    def gather_single(self, future):
+        return future.result()
