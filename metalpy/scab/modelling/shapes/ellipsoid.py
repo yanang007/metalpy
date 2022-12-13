@@ -2,6 +2,7 @@ import numpy as np
 
 from . import Shape3D
 from .cuboid import is_inside_cuboid
+from .bounds import Bounds
 
 
 class Ellipsoid(Shape3D):
@@ -78,12 +79,9 @@ class Ellipsoid(Shape3D):
     def do_clone(self):
         return Ellipsoid(*self.radii)
 
-    def plot(self, ax, color):
-        pass
-
     @property
     def local_bounds(self):
-        return np.c_[-self.radii, self.radii].ravel()
+        return Bounds(*np.c_[-self.radii, self.radii].ravel())
 
     def to_local_polydata(self):
         import pyvista as pv

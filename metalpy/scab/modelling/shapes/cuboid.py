@@ -4,6 +4,7 @@ import numpy as np
 
 from . import Shape3D
 from metalpy.utils.misc import plot_opaque_cube
+from .bounds import Bounds
 
 
 def is_inside_cuboid(mesh, corner, lengths):
@@ -132,9 +133,9 @@ class Cuboid(Shape3D):
 
     @property
     def local_bounds(self):
-        return np.c_[self.corner, self.corner + self.lengths].ravel()
+        return Bounds(*np.c_[self.corner, self.corner + self.lengths].ravel())
 
     def to_local_polydata(self):
         import pyvista as pv
 
-        return pv.Cube(bounds=self.local_bounds)
+        return pv.Cube(bounds=np.asarray(self.local_bounds))

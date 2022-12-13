@@ -1,6 +1,6 @@
-from typing import Any, Union, Callable
+from typing import Any, Union
 
-from .mix_modes import MixMode
+from .mix_modes import MixMode, Mixer
 from .shapes import Shape3D
 
 
@@ -10,7 +10,7 @@ class Object:
     def __init__(self,
                  shape: Shape3D,
                  models: Union[dict[str, Any], Any],
-                 mix_mode: Union[MixMode, Callable] = MixMode.Normal):
+                 mix_mode: Mixer = MixMode.Override):
         """代表一个三维几何体图层
 
         Parameters
@@ -29,12 +29,7 @@ class Object:
             models = {Object.DEFAULT_KEY: models}
         self.models = models
 
-        if isinstance(mix_mode, MixMode):
-            self.mixer = MixMode.dispatch(mix_mode)
-        elif callable(mix_mode):
-            self.mixer = mix_mode
-        else:
-            raise ValueError(f'Mix mode must be either MixMode or function, got {type(mix_mode)} instead.')
+        self.mixer = MixMode.dispatch(mix_mode)
 
     @property
     def shape(self) -> Shape3D:

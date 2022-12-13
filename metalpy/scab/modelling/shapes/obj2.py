@@ -7,6 +7,7 @@ import pyvista as pv
 from metalpy.utils.model import hash_model, split_models_in_memory, load_model_file, load_grouped_file, \
     extract_model_list_bounds
 from . import Shape3D
+from .bounds import Bounds
 
 
 def check_density(length, dx, nx, _default):
@@ -176,12 +177,9 @@ class Obj2(Shape3D):
         ret.models = [m.copy(deep=True) for m in self.models]
         return ret
 
-    def plot(self, ax, color):
-        pass
-
     @property
     def local_bounds(self):
-        return extract_model_list_bounds(self.models)
+        return Bounds(*extract_model_list_bounds(self.models))
 
     def to_local_polydata(self):
         return pv.merge(self.models, merge_points=False).copy(deep=True)

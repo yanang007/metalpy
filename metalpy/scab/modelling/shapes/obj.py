@@ -31,6 +31,3 @@ class Obj(Shape3D):
 
     def do_clone(self):
         return Obj(self.model.clone(), *self.grid_size)
-
-    def plot(self, ax, color):
-        pass

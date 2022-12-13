@@ -3,6 +3,7 @@ from typing import Iterable
 
 import numpy as np
 
+from .bounds import Bounds
 from ..transform import CompositeTransform, Transform, Translation, Rotation
 
 
@@ -78,10 +79,6 @@ class Shape3D(ABC):
     def do_clone(self):
         raise NotImplementedError()
 
-    @abstractmethod
-    def plot(self, ax, color):
-        raise NotImplementedError()
-
     def to_polydata(self):
         """将 Shape 转换为 PolyData 表示
 
@@ -98,8 +95,11 @@ class Shape3D(ABC):
         import pyvista as pv
 
         ret: pv.PolyData = self.to_local_polydata()
-        pts = self.transforms.transform(ret.points)
-        ret.points = pts
+
+        if ret is not None:
+            pts = self.transforms.transform(ret.points)
+            ret.points = pts
+
         return ret
 
     def to_local_polydata(self):
@@ -128,7 +128,7 @@ class Shape3D(ABC):
         return self.transforms.transform(self.local_center)
 
     @property
-    def bounds(self) -> np.ndarray:
+    def bounds(self) -> Bounds:
         """获取Shape在世界坐标系下的长方体包围盒
 
         Returns
@@ -142,7 +142,7 @@ class Shape3D(ABC):
         ret[::2] = np.min(bounds, axis=1)
         ret[1::2] = np.max(bounds, axis=1)
 
-        return ret
+        return Bounds(*ret)
 
     @property
     def oriented_bounds(self) -> np.ndarray:
@@ -171,7 +171,7 @@ class Shape3D(ABC):
         return bounds.mean(axis=0)
 
     @property
-    def local_bounds(self) -> np.ndarray:
+    def local_bounds(self) -> Bounds:
         """获取Shape在局部坐标系下的长方体包围盒
 
         子类需要至少实现local_oriented_bounds和local_bounds中的一个
@@ -187,7 +187,7 @@ class Shape3D(ABC):
         ret[::2] = np.min(bounds, axis=1)
         ret[1::2] = np.max(bounds, axis=1)
 
-        return ret
+        return Bounds(*ret)
 
     @property
     def local_oriented_bounds(self) -> np.ndarray:
@@ -317,9 +317,8 @@ def bounding_box_of(shapes: Iterable[Shape3D]):
     bounds = None
     for m in shapes:
         if bounds is None:
-            bounds = np.asarray(m.bounds)
+            bounds = m.bounds
             continue
-        bounds[1::2] = np.max([bounds[1::2], m.bounds[1::2]], axis=0)
-        bounds[0::2] = np.min([bounds[0::2], m.bounds[0::2]], axis=0)
+        bounds = Bounds.merge(bounds, m.bounds)
 
     return bounds

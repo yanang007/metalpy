@@ -12,7 +12,8 @@ def main():
         Ellipsoid.spheroid(1, 3, 0).translated(0, -2, 2),
         Tunnel([-3, 2, 2], 0.5, 1, 3),
         Obj2('../obj/stl_models/mine.stl', scale=0.03).translated(1, -2, -1),
-    )
+        models=1
+    ).with_background(1e-5)
 
     mesh, ind_active = scene.build(cell_size=0.2)
     grids = scene.mesh_to_polydata(mesh, ind_active)
@@ -35,8 +36,9 @@ def main():
     p.show_axes()
 
     p.subplot(0, 2)
-    p.add_mesh(models, opacity=0.2)
+    p.add_mesh(models, opacity=0.4)
     p.add_mesh(active_grids, show_edges=True)
+    p.add_mesh(grids.threshold([0, 1]), show_edges=True, opacity=0.2)
     p.show_grid()
     p.show_axes()
 

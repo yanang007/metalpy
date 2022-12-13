@@ -1,8 +1,10 @@
 import numpy as np
 
+from scipy.stats import linregress
+
 from metalpy.scab.modelling.shapes.cuboid import is_inside_cuboid
 from . import Shape3D
-from scipy.stats import linregress
+from .bounds import Bounds
 
 
 def is_abs_distance_in(arr, x0, r):
@@ -102,15 +104,12 @@ class Prism(Shape3D):
     def do_clone(self):
         return Prism(self.pts, self.z0, self.z1)
 
-    def plot(self, ax, color):
-        pass
-
     @property
     def local_bounds(self):
-        return np.c_[
+        return Bounds(*np.c_[
             np.r_[self.pts.min(axis=0), self.z0],
             np.r_[self.pts.max(axis=0), self.z1]
-        ].ravel()
+        ].ravel())
 
     def to_local_polydata(self):
         import pyvista as pv

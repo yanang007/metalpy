@@ -6,14 +6,18 @@ import tqdm
 from discretize import TensorMesh
 
 from metalpy.mepa import LinearExecutor
+from .layer import Layer
+from .mix_modes import MixMode
 from .object import Object
 from .shapes import Shape3D
+from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
 
 
 class Scene:
     def __init__(self):
-        self.objects: list[Object] = []
+        self.objects_layer = Layer()
+        self.backgrounds_layer = Layer(mix_mode=MixMode.KeepOriginal)
 
     @staticmethod
     def of(*shapes: Shape3D, models: Union[Any, dict, list[Any], list[dict], None] = None):
@@ -40,46 +44,25 @@ class Scene:
             返回构造的三维几何体
         """
         obj = Object(shape, models)
-        self.objects.append(obj)
+        self.objects_layer.append(obj)
 
         return obj
 
+    def append_background(self, value, region_shape=None):
+        if region_shape is None:
+            region_shape = FullSpace()
+        obj = Object(region_shape, value)
+        self.backgrounds_layer.append(obj)
+
+        return obj
+
+    def with_background(self, value, region_shape=None):
+        self.append_background(value, region_shape)
+        return self
+
     @property
     def bounds(self):
-        return bounding_box_of(self.shapes())
-
-    @staticmethod
-    def build_mesh_worker(objects: list[Object], mesh, show_modeling_progress, worker_id):
-        models = {}
-        for obj in tqdm.tqdm(objects, position=0, leave=False, ncols=80) if show_modeling_progress else objects:
-            shape = obj.shape
-
-            # place的结果应该为布尔数组或范围为[0, 1]的数组，指示对应网格位置是否有效或有效程度
-            ind = shape.place(mesh, worker_id)
-            current_mask = ind if ind.dtype == bool else ind != 0  # TODO: 考察是否有必要视0为非活动网格
-
-            for key, current_value in obj.items():
-                if ind.dtype == bool:
-                    current_layer = np.zeros_like(ind, dtype=type(current_value))
-                    current_layer[ind] = current_value
-                else:
-                    current_layer = ind * current_value
-
-                if key not in models:
-                    models[key] = current_layer
-                else:
-                    prev_layer = models[key]
-                    filled_ind = prev_layer != 0  # TODO: 同上
-                    overlapping_mask = filled_ind & current_mask
-                    non_overlapping_mask = current_mask ^ overlapping_mask
-
-                    prev_layer[overlapping_mask] = obj.mix(
-                        prev_layer[overlapping_mask],
-                        current_layer[overlapping_mask]
-                    )
-                    prev_layer[non_overlapping_mask] = current_layer[non_overlapping_mask]
-
-        return models
+        return bounding_box_of(self.shapes)
 
     def build_model(self, mesh,
                     executor=None,
@@ -114,7 +97,7 @@ class Scene:
         futures = []
         for i, worker in enumerate(executor.get_workers()):
             futures.append(
-                executor.submit(self.build_mesh_worker, self.objects, input_mesh.assign(worker),
+                executor.submit(self._build_mesh_worker, self.layers, input_mesh.assign(worker),
                                 worker_id=i,
                                 show_modeling_progress=i == 0 if progress else False,
                                 worker=worker, )
@@ -201,23 +184,48 @@ class Scene:
 
         return mesh, model
 
+    @property
+    def layers(self) -> Iterable[Layer]:
+        yield self.objects_layer
+        yield self.backgrounds_layer
+
+    @property
+    def objects(self):
+        for layer in self.layers:
+            for obj in layer:
+                yield obj
+
+    @property
+    def shapes(self) -> Iterable[Shape3D]:
+        for obj in self.objects:
+            yield obj.shape
+
+    def __len__(self):
+        return sum((len(layer) for layer in self.layers))
+
     def __iter__(self) -> Iterable[Object]:
         for obj in self.objects:
             yield obj
 
     def __getitem__(self, item) -> Object:
-        return self.objects[item]
+        if item < 0:
+            item = len(self) + item
 
-    def shapes(self) -> Iterable[Shape3D]:
-        for obj in self.objects:
-            yield obj.shape
+        for layer in self.layers:
+            size = len(layer)
+            if item < size:
+                return layer[item]
+            else:
+                item -= size
 
     def to_multiblock(self):
         import pyvista as pv
 
         ret = pv.MultiBlock()
-        for shape in self.shapes():
-            ret.append(shape.to_polydata())
+        for shape in self.shapes:
+            poly = shape.to_polydata()
+            if poly is not None:
+                ret.append(poly)
 
         return ret
 
@@ -240,3 +248,94 @@ class Scene:
             break
 
         return grids
+
+    @staticmethod
+    def _generate_active_mask(model):
+        # TODO: 考察是否有必要视0为非活动网格
+        return model if model.dtype == bool else model != 0
+
+    @staticmethod
+    def _merge_models(models, new_models: Iterable[tuple[str, np.ndarray]], mask, mixer):
+        """将new_models合并到models中，inplace
+
+        Parameters
+        ----------
+        models
+            已有的model
+        new_models
+            将要合并的model，以迭代器形式提供
+        mask
+            新model的有效格mask，如果指定为None，则会为每个待合并model单独计算mask
+        mixer
+            混合器
+
+        Notes
+        -----
+            会直接修改models以及其内的数组
+        """
+        for key, current_layer in new_models:
+            if mask is not None:
+                current_mask = mask
+            else:
+                current_mask = current_layer != 0
+
+            if key not in models:
+                models[key] = current_layer
+            else:
+                prev_layer = models[key]
+                filled_ind = Scene._generate_active_mask(prev_layer)
+                overlapping_mask = filled_ind & current_mask
+                non_overlapping_mask = current_mask ^ overlapping_mask
+
+                prev_layer[overlapping_mask] = mixer(
+                    prev_layer[overlapping_mask],
+                    current_layer[overlapping_mask]
+                )
+                prev_layer[non_overlapping_mask] = current_layer[non_overlapping_mask]
+
+    @staticmethod
+    def _build_layer(layer: Layer, mesh, worker_id, progress=None):
+        objects = layer.objects
+        models = {}
+
+        for obj in objects:
+            shape = obj.shape
+
+            # place的结果应该为布尔数组或范围为[0, 1]的数组，指示对应网格位置是否有效或有效程度
+            ind: np.ndarray = shape.place(mesh, worker_id)
+            mask = Scene._generate_active_mask(ind)
+
+            def model_generator():
+                for key, current_value in obj.items():
+                    if ind.dtype == bool:
+                        current_layer = np.zeros_like(ind, dtype=type(current_value))
+                        current_layer[ind] = current_value
+                    else:
+                        current_layer = ind * current_value
+                    yield key, current_layer
+
+            Scene._merge_models(models, model_generator(), mask, obj.mixer)
+
+            if progress is not None:
+                progress.update(1)
+
+        return models
+
+    @staticmethod
+    def _build_mesh_worker(layers: list[Layer], mesh, show_modeling_progress, worker_id):
+        models = {}
+
+        if show_modeling_progress:
+            progress = tqdm.tqdm(total=sum((len(layer) for layer in layers)),
+                                 position=0, leave=False, ncols=80)
+        else:
+            progress = None
+
+        for layer in layers:
+            layer_models = Scene._build_layer(layer, mesh, worker_id, progress)
+            Scene._merge_models(models, layer_models.items(), None, layer.mixer)
+
+        if progress is not None:
+            progress.close()
+
+        return models

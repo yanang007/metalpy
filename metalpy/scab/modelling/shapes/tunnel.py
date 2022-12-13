@@ -1,6 +1,7 @@
 import numpy as np
 
 from . import Shape3D
+from .bounds import Bounds
 
 
 def is_abs_distance_in(arr, x0, r):
@@ -46,19 +47,16 @@ class Tunnel(Shape3D):
     def do_clone(self):
         return Tunnel(self.p0, self.r0, self.r1, self.L)
 
-    def plot(self, ax, color):
-        pass
-
     @property
     def local_bounds(self):
         x0, y0, z0 = self.p0
         r1 = self.r1
         L = self.L
-        return np.r_[
+        return Bounds(*np.r_[
             x0, L,
             y0 - r1, y0 + r1,
             z0 - r1, z0 + r1,
-        ].ravel()
+        ].ravel())
 
     def to_local_polydata(self):
         import pyvista as pv
