@@ -11,18 +11,22 @@ def hash_str(*objs):
             flattened.append(obj)
 
     flattened = tuple(flattened)
-    char_table = '0123456789abcdef'
-    tablesize = len(char_table)
     hash_value = hash(flattened)
 
-    hash_str = ''
+    return create_hash_str(hash_value)
 
-    while hash_value != 0 and len(hash_str) < 6:
+
+def create_hash_str(hash_value, max_width=6):
+    char_table = '0123456789abcdef'
+    tablesize = len(char_table)
+    hash_string = ''
+
+    while hash_value != 0 and len(hash_string) < max_width:
         c = hash_value % tablesize
-        hash_str = char_table[c] + hash_str
+        hash_string = char_table[c] + hash_string
         hash_value = hash_value // tablesize
 
-    return hash_str
+    return hash_string
 
 
 def hash_numpy_array(arr: np.ndarray, n_samples=10, sparse=False):
@@ -39,3 +43,13 @@ def hash_numpy_array(arr: np.ndarray, n_samples=10, sparse=False):
         packed = blosc2.pack_array2(arr)
 
         return hash(packed)
+
+
+def hash_string_value(string: str):
+    """
+    Warnings
+    --------
+        用于解决python内建hash在处理Workaround
+        string过大时可能存在性能问题
+    """
+    return hash_numpy_array(np.asarray([ord(c) for c in string], dtype=np.int32))

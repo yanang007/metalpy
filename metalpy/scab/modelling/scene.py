@@ -1,4 +1,5 @@
 import copy
+import os.path
 from typing import Any, Union, Iterable
 
 import numpy as np
@@ -6,15 +7,20 @@ import tqdm
 from discretize import TensorMesh
 
 from metalpy.mepa import LinearExecutor
+from metalpy.utils.file import ensure_dir, make_cache_directory
 from .layer import Layer
 from .mix_modes import MixMode
 from .object import Object
 from .shapes import Shape3D
 from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
+from ..utils.hash import hash_discretize_mesh
+from ...utils.hash import create_hash_str, hash_str
 
 
 class Scene:
+    default_cache_dir = make_cache_directory('models')
+
     def __init__(self):
         self.objects_layer = Layer()
         self.backgrounds_layer = Layer(mix_mode=MixMode.KeepOriginal)
@@ -66,7 +72,10 @@ class Scene:
 
     def build_model(self, mesh,
                     executor=None,
-                    progress=False) -> Union[np.ndarray, dict[str, np.ndarray]]:
+                    progress=False,
+                    cache=None,
+                    cache_dir=None,
+                    ) -> Union[np.ndarray, dict[str, np.ndarray]]:
         """在给定网格上构建模型
 
         Parameters
@@ -77,6 +86,10 @@ class Scene:
             并行执行器
         progress
             是否显示进度条
+        cache
+            控制缓存文件，若为bool值，则指示是否启用缓存；若为str，则指示缓存文件的路径
+        cache_dir
+            控制缓存文件夹，指示放置缓存文件的文件夹，文件名会使用默认规则生成
 
         Returns
         -------
@@ -87,26 +100,44 @@ class Scene:
         Notes
         -----
             模型假设为非0值
+
+            cache和cache_dir任意一个不为空时则会启动缓存，但如果cache和cache_dir同时被指定，则
+
+            如果cache为True，则使用cache_dir与默认规则文件名
+
+            如果cache为路径，则使用cache指定的文件路径
         """
-        if executor is None:
-            executor = LinearExecutor(1)
+        cache_filepath = self._determine_cache_filepath(mesh, cache, cache_dir)
 
-        mesh_centers = np.asarray(mesh.cell_centers)
-        input_mesh = executor.arrange_single(mesh_centers)
+        if cache_filepath is not None and os.path.exists(cache_filepath):
+            import pickle
+            with open(cache_filepath, 'rb') as f:
+                models_dict = pickle.load(f)
+        else:
+            if executor is None:
+                executor = LinearExecutor(1)
 
-        futures = []
-        for i, worker in enumerate(executor.get_workers()):
-            futures.append(
-                executor.submit(self._build_mesh_worker, self.layers, input_mesh.assign(worker),
-                                worker_id=i,
-                                show_modeling_progress=i == 0 if progress else False,
-                                worker=worker, )
-            )
-        executor.gather(futures)
+            mesh_centers = np.asarray(mesh.cell_centers)
+            input_mesh = executor.arrange_single(mesh_centers)
 
-        models_dict = {}
-        for key in futures[0].result().keys():
-            models_dict[key] = np.concatenate([future.result()[key] for future in futures])
+            futures = []
+            for i, worker in enumerate(executor.get_workers()):
+                futures.append(
+                    executor.submit(self._build_mesh_worker, self.layers, input_mesh.assign(worker),
+                                    worker_id=i,
+                                    show_modeling_progress=i == 0 if progress else False,
+                                    worker=worker, )
+                )
+            executor.gather(futures)
+
+            models_dict = {}
+            for key in futures[0].result().keys():
+                models_dict[key] = np.concatenate([future.result()[key] for future in futures])
+
+            if cache_filepath is not None:
+                import pickle
+                with open(cache_filepath, 'wb') as f:
+                    pickle.dump(models_dict, f)
 
         if len(models_dict) == 1 and Object.DEFAULT_KEY in models_dict:
             return models_dict[Object.DEFAULT_KEY]
@@ -135,15 +166,15 @@ class Scene:
 
             若n_cells为单个值，则用于指定总网格数，保证生成的网格数小于等于该值。
         """
+        bounds = self.bounds
+        sizes = bounds[1::2] - bounds[::2]
+
         if cell_size is not None:
             if not isinstance(cell_size, Iterable):
                 cell_size = [cell_size] * 3
             cell_size = np.asarray(cell_size)
-            bounds = self.bounds
-            n_cells = np.ceil((bounds[1::2] - bounds[::2]) / cell_size).astype(int)
+            n_cells = np.ceil(sizes / cell_size).astype(int)
         else:
-            bounds = self.bounds
-            sizes = bounds[1::2] - bounds[::2]
             if not isinstance(n_cells, Iterable):
                 avg_grids = (n_cells / np.prod(sizes)) ** (1 / 3)
                 n_cells = (avg_grids * sizes).astype(int)
@@ -154,7 +185,7 @@ class Scene:
 
         return TensorMesh([[(d, n)] for d, n in zip(cell_size, n_cells)], origin=bounds[::2])
 
-    def build(self, cell_size=None, n_cells=None, executor=None, progress=False):
+    def build(self, cell_size=None, n_cells=None, executor=None, progress=False, cache=None, cache_dir=None):
         """根据给定的网格尺寸，构建场景的网格和模型，是create_mesh和build_model的组合
 
         Parameters
@@ -167,6 +198,10 @@ class Scene:
             并行执行器
         progress
             是否显示进度条
+        cache
+            指示缓存行为，详见Scene.build_model。单独使用cache=True来使用默认缓存路径或cache='...'来指定缓存文件路径
+        cache_dir
+            指示缓存行为，详见Scene.build_model。单独使用cache_dir='...'来指定缓存所在的文件夹路径
 
         Returns
         -------
@@ -176,11 +211,11 @@ class Scene:
 
         See Also
         --------
-            Scene.create_mesh
-            Scene.build_model
+            Scene.create_mesh : 构造网格
+            Scene.build_model : 构造模型
         """
         mesh = self.create_mesh(cell_size=cell_size, n_cells=n_cells)
-        model = self.build_model(mesh, executor=executor, progress=progress)
+        model = self.build_model(mesh, executor=executor, progress=progress, cache=cache, cache_dir=cache_dir)
 
         return mesh, model
 
@@ -248,6 +283,9 @@ class Scene:
             break
 
         return grids
+
+    def __hash__(self):
+        return hash((*self.layers,))
 
     @staticmethod
     def _generate_active_mask(model):
@@ -339,3 +377,45 @@ class Scene:
             progress.close()
 
         return models
+
+    def _determine_cache_filepath(self, mesh, cache, cache_dir):
+        cache_filepath = None
+        if isinstance(cache, bool) and cache:
+            cache_filename = self._generate_model_filename(mesh)
+            if cache_dir is not None:
+                cache_filepath = os.path.join(cache_dir, cache_filename)
+            else:
+                ensure_dir(Scene.default_cache_dir)
+                cache_filepath = os.path.join(os.path.abspath(Scene.default_cache_dir), cache_filename)
+        elif isinstance(cache, str):
+            cache_filepath = cache
+        elif cache is None:
+            if cache_dir is not None:
+                cache_filename = self._generate_model_filename(mesh)
+                cache_filepath = os.path.join(cache_dir, cache_filename)
+
+        return cache_filepath
+
+    def _generate_model_filename(self, mesh: TensorMesh):
+        mesh_hash = create_hash_str(hash_discretize_mesh(mesh))
+        model_hash = hash_str(self)
+
+        origin = mesh.origin.astype(float)
+        lengths = np.asarray([h.sum() for h in mesh.h])
+
+        components = []
+
+        for axis, x0, length in zip('xyz', origin, lengths):
+            components.append(f'{axis}({x0:.2}~{x0 + length:.2})')
+
+        avg_node_size = lengths / [h.shape[0] for h in mesh.h]
+        if np.all(avg_node_size - avg_node_size[0] < 1e-7):
+            avg_node_size = np.asarray(avg_node_size[0])
+            components.append(f'avg_gs({avg_node_size:.2})')
+        else:
+            components.append(f'avg_gs{(*np.around(avg_node_size, decimals=2),)}')
+
+        components.append(f'mesh({mesh_hash})')
+        components.append(f'model({model_hash})')
+
+        return '#'.join(components) + '.pkl'

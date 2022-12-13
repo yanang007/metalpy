@@ -131,5 +131,5 @@ class Prism(Shape3D):
 
         faces = np.r_[top_face, bottom_face, side_faces]
 
-        shape = pv.PolyData(vertices, faces=faces)
+        shape = pv.PolyData(vertices.astype(np.float64), faces=faces)
         return shape

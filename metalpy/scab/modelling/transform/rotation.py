@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+
+from metalpy.utils.hash import hash_string_value
 from .transform import Transform
 
 
@@ -20,4 +22,4 @@ class Rotation(Transform):
         return Rotation(*self.params)
 
     def __hash__(self):
-        return hash(self.params)
+        return hash((*self.params[:-1], hash_string_value(self.params[-1])))

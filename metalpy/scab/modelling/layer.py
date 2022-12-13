@@ -1,4 +1,4 @@
-from .mix_modes import MixMode, Mixer
+from .mix_modes import MixMode, Mixer, hash_mixer
 from .object import Object
 
 
@@ -22,3 +22,6 @@ class Layer:
     def __iter__(self):
         for obj in self.objects:
             yield obj
+
+    def __hash__(self):
+        return hash((*self.objects, hash_mixer(self.mixer)))

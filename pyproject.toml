@@ -29,6 +29,7 @@ dependencies = [
     "matplotlib",
     "psutil",
     "pympler",
+    "cloudpickle",
     #"pywin32",
     "properties",
     "colour",

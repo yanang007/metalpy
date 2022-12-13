@@ -1,7 +1,8 @@
 from typing import Any, Union
 
-from .mix_modes import MixMode, Mixer
+from .mix_modes import MixMode, Mixer, hash_mixer
 from .shapes import Shape3D
+from ...utils.hash import hash_string_value
 
 
 class Object:
@@ -69,3 +70,7 @@ class Object:
 
     def __getitem__(self, item):
         return self.models[item]
+
+    def __hash__(self):
+        return hash((self.shape, hash_mixer(self.mixer),
+                     *[hash((hash_string_value(k), v)) for k, v in self.models.items()]))
