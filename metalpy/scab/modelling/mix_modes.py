@@ -1,10 +1,6 @@
 from enum import Enum
 from typing import Union, Callable
 
-import numpy as np
-
-from metalpy.utils.hash import hash_numpy_array, hash_string_value
-
 
 class MixMode(Enum):
     @staticmethod
@@ -51,21 +47,16 @@ class MixMode(Enum):
 Mixer = Union[MixMode, Callable]
 
 
-def hash_mixer(mixer: Mixer):
+def dhashable_mixer(mixer: Mixer):
     """返回mixer的哈希值
 
     Parameters
     ----------
     mixer
         混合器名或函数
-
-    Warnings
-    --------
-        TODO: Python内置hash对字符串的哈希结果会随机化导致问题，需要更换为确定性哈希算法
     """
     if isinstance(mixer, MixMode):
-        return hash_string_value(mixer.value)
+        return mixer.value
     else:
         import cloudpickle
-        buf = np.frombuffer(cloudpickle.dumps(mixer), dtype=np.uint8)
-        return hash_numpy_array(buf)
+        return cloudpickle.dumps(mixer)

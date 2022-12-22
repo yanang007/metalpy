@@ -2,6 +2,7 @@ from typing import Iterable, Union
 
 import numpy as np
 
+from metalpy.utils.dhash import dhash
 from . import Shape3D
 from metalpy.utils.misc import plot_opaque_cube
 from .bounds import Bounds
@@ -124,6 +125,9 @@ class Cuboid(Shape3D):
 
     def do_hash(self):
         return hash((*self.corner, *self.lengths))
+
+    def __dhash__(self):
+        return dhash(super().__dhash__(), *self.corner, *self.lengths)
 
     def do_clone(self):
         return Cuboid(corner=self.corner.copy(), size=self.lengths)

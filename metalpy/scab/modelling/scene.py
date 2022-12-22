@@ -14,8 +14,8 @@ from .object import Object
 from .shapes import Shape3D
 from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
-from ..utils.hash import hash_discretize_mesh
-from ...utils.hash import create_hash_str, hash_str
+from ..utils.hash import dhash_discretize_mesh
+from ...utils.dhash import dhash
 
 
 class Scene:
@@ -284,8 +284,8 @@ class Scene:
 
         return grids
 
-    def __hash__(self):
-        return hash((*self.layers,))
+    def __dhash__(self):
+        return dhash(*self.layers)
 
     @staticmethod
     def _generate_active_mask(model):
@@ -397,8 +397,8 @@ class Scene:
         return cache_filepath
 
     def _generate_model_filename(self, mesh: TensorMesh):
-        mesh_hash = create_hash_str(hash_discretize_mesh(mesh))
-        model_hash = hash_str(self)
+        mesh_hash = dhash_discretize_mesh(mesh).hexdigest(digits=6)
+        model_hash = dhash(self).hexdigest(digits=6)
 
         origin = mesh.origin.astype(float)
         lengths = np.asarray([h.sum() for h in mesh.h])

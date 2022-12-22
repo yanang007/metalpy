@@ -1,5 +1,6 @@
 import numpy as np
 
+from metalpy.utils.dhash import dhash
 from .transform import Transform
 
 
@@ -17,5 +18,5 @@ class Translation(Transform):
     def clone(self):
         return Translation(*self.delta)
 
-    def __hash__(self):
-        return hash(tuple(self.delta))
+    def __dhash__(self):
+        return dhash(*self.delta)

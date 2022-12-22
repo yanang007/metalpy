@@ -43,13 +43,3 @@ def hash_numpy_array(arr: np.ndarray, n_samples=10, sparse=False):
         packed = blosc2.pack_array2(arr)
 
         return hash(packed)
-
-
-def hash_string_value(string: str):
-    """
-    Warnings
-    --------
-        用于解决python内建hash在处理Workaround
-        string过大时可能存在性能问题
-    """
-    return hash_numpy_array(np.asarray([ord(c) for c in string], dtype=np.int32))

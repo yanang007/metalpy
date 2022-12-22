@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from metalpy.utils.hash import hash_string_value
+from metalpy.utils.dhash import dhash
 from .transform import Transform
 
 
@@ -21,5 +21,5 @@ class Rotation(Transform):
     def clone(self):
         return Rotation(*self.params)
 
-    def __hash__(self):
-        return hash((*self.params[:-1], hash_string_value(self.params[-1])))
+    def __dhash__(self):
+        return dhash(*self.params[:-1], self.params[-1])

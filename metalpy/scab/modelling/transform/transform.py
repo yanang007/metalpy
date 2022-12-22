@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from metalpy.utils.dhash import dhash
+
 
 class Transform(ABC):
     def __init__(self):
@@ -17,6 +19,9 @@ class Transform(ABC):
     def clone(self):
         return Transform()
 
-    @abstractmethod
     def __hash__(self):
+        return dhash(self).digest()
+
+    @abstractmethod
+    def __dhash__(self):
         raise NotImplementedError()

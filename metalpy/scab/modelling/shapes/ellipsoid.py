@@ -1,5 +1,6 @@
 import numpy as np
 
+from metalpy.utils.dhash import dhash
 from . import Shape3D
 from .cuboid import is_inside_cuboid
 from .bounds import Bounds
@@ -75,6 +76,9 @@ class Ellipsoid(Shape3D):
 
     def do_hash(self):
         return hash((*self.radii,))
+
+    def __dhash__(self):
+        return dhash(super().__dhash__(), *self.radii)
 
     def do_clone(self):
         return Ellipsoid(*self.radii)

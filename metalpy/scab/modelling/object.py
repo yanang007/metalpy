@@ -1,8 +1,8 @@
 from typing import Any, Union
 
-from .mix_modes import MixMode, Mixer, hash_mixer
+from .mix_modes import MixMode, Mixer, dhashable_mixer
 from .shapes import Shape3D
-from ...utils.hash import hash_string_value
+from ...utils.dhash import dhash
 
 
 class Object:
@@ -30,7 +30,11 @@ class Object:
             models = {Object.DEFAULT_KEY: models}
         self.models = models
 
-        self.mixer = MixMode.dispatch(mix_mode)
+        self.mix_mode = mix_mode
+
+    @property
+    def mixer(self):
+        return MixMode.dispatch(self.mix_mode)
 
     @property
     def shape(self) -> Shape3D:
@@ -71,6 +75,5 @@ class Object:
     def __getitem__(self, item):
         return self.models[item]
 
-    def __hash__(self):
-        return hash((self.shape, hash_mixer(self.mixer),
-                     *[hash((hash_string_value(k), v)) for k, v in self.models.items()]))
+    def __dhash__(self):
+        return dhash(self.shape, dhashable_mixer(self.mix_mode), self.models)

@@ -3,6 +3,7 @@ import numpy as np
 from scipy.stats import linregress
 
 from metalpy.scab.modelling.shapes.cuboid import is_inside_cuboid
+from metalpy.utils.dhash import dhash
 from . import Shape3D
 from .bounds import Bounds
 
@@ -100,6 +101,10 @@ class Prism(Shape3D):
 
     def do_hash(self):
         return hash((*self.pts.ravel(), self.z0, self.z1))
+
+    def __dhash__(self):
+        return dhash(super().__dhash__(),
+                     self.z0, self.z1, *self.pts.ravel())
 
     def do_clone(self):
         return Prism(self.pts, self.z0, self.z1)

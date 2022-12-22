@@ -6,6 +6,7 @@ import pyvista as pv
 import tqdm
 
 from .algos import QuickUnion, ConnectedTriangleSurfaces
+from .dhash import _hash_array
 from .file import make_cache_file, make_cache_directory
 from .hash import hash_numpy_array
 from .obj_splitter import ObjSplitter
@@ -14,6 +15,10 @@ from .time import Timer
 
 def hash_model(model, n_samples=10):
     return hash_numpy_array(model.points, n_samples)
+
+
+def dhash_model(model, n_samples=10):
+    return _hash_array(model.points, n_samples)
 
 
 def extract_model_list_bounds(model_list):

@@ -1,5 +1,6 @@
 import numpy as np
 
+from metalpy.utils.dhash import dhash
 from . import Shape3D
 from .bounds import NoBounds
 
@@ -16,6 +17,9 @@ class FullSpace(Shape3D):
 
     def do_hash(self):
         return 0
+
+    def __dhash__(self):
+        return dhash()
 
     def do_clone(self):
         return FullSpace()

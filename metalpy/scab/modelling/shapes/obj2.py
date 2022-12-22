@@ -4,8 +4,9 @@ from typing import Union
 import numpy as np
 import pyvista as pv
 
+from metalpy.utils.dhash import dhash
 from metalpy.utils.model import hash_model, split_models_in_memory, load_model_file, load_grouped_file, \
-    extract_model_list_bounds
+    extract_model_list_bounds, dhash_model
 from . import Shape3D
 from .bounds import Bounds
 
@@ -171,6 +172,15 @@ class Obj2(Shape3D):
                      self.surface_only,
                      *surface_range,
                      ))
+
+    def __dhash__(self):
+        n_samples = np.max((2, 10 // len(self.models)))
+        surface_range = self.surface_range if self.surface_range is not None else (None,)
+        return dhash(super().__dhash__(),
+                     self.surface_only,
+                     *surface_range,
+                     *(dhash_model(m, n_samples) for m in self.models),
+                     )
 
     def do_clone(self):
         ret = Obj2(None, surface_range=self.surface_range)

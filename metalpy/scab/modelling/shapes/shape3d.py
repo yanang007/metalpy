@@ -3,6 +3,7 @@ from typing import Iterable
 
 import numpy as np
 
+from metalpy.utils.dhash import dhash
 from .bounds import Bounds
 from ..transform import CompositeTransform, Transform, Translation, Rotation
 
@@ -68,7 +69,11 @@ class Shape3D(ABC):
         raise NotImplementedError()
 
     def __hash__(self):
-        return hash((self.do_hash(), hash(self.transforms)))
+        return dhash(self).digest()
+
+    @abstractmethod
+    def __dhash__(self):
+        return dhash(self.transforms)
 
     def clone(self):
         ret = self.do_clone()

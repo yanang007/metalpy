@@ -1,3 +1,4 @@
+from metalpy.utils.dhash import dhash
 from .transform import Transform
 
 
@@ -26,5 +27,5 @@ class CompositeTransform(Transform):
 
         return ret
 
-    def __hash__(self):
-        return hash((*self.transforms,))
+    def __dhash__(self):
+        return dhash(*self.transforms,)
