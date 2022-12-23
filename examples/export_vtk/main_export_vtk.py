@@ -1,5 +1,6 @@
 import pyvista as pv
 
+from metalpy.scab.modelling.bounded import Bounded
 from metalpy.scab.modelling.scene import Scene
 from metalpy.scab.modelling.shapes import Cuboid, Prism, Ellipsoid, Tunnel, Obj2
 
@@ -15,7 +16,7 @@ def main():
         models=1
     ).with_background(1e-5)
 
-    mesh, ind_active = scene.build(cell_size=0.2, cache=True)
+    mesh, ind_active = scene.build(cell_size=0.2, cache=True, bounds=Bounded(zmax=2))
     grids = scene.mesh_to_polydata(mesh, ind_active)
 
     p = pv.Plotter(shape=(1, 3))

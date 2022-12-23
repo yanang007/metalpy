@@ -56,15 +56,15 @@ class Bounds:
         return self.bounds[5]
 
     @property
-    def xspan(self):
+    def xlength(self):
         return self.xmax - self.xmin
 
     @property
-    def yspan(self):
+    def ylength(self):
         return self.ymax - self.ymin
 
     @property
-    def zspan(self):
+    def zlength(self):
         return self.zmax - self.zmin
 
     def __str__(self):

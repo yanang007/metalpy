@@ -12,6 +12,7 @@ from .layer import Layer
 from .mix_modes import MixMode
 from .object import Object
 from .shapes import Shape3D
+from .shapes.bounds import Bounds
 from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
 from ..utils.hash import dhash_discretize_mesh
@@ -144,7 +145,7 @@ class Scene:
         else:
             return models_dict
 
-    def create_mesh(self, cell_size=None, n_cells=None) -> Union[TensorMesh]:
+    def create_mesh(self, cell_size=None, n_cells=None, bounds=None,) -> Union[TensorMesh]:
         """根据场景边界构建网格
 
         Parameters
@@ -153,6 +154,8 @@ class Scene:
             网格长宽高相等或分别定义网格x, y, z方向宽度大小
         n_cells : number or array(3,)
             总网格数或x, y, z方向网格数
+        bounds : array(6,) or Bounds
+            网格范围，为array(6,)[xmin, xmax, ymin, ymax, zmin, zmax]或Bounds实例，为None的位置会使用默认值
 
         Returns
         -------
@@ -166,7 +169,12 @@ class Scene:
 
             若n_cells为单个值，则用于指定总网格数，保证生成的网格数小于等于该值。
         """
-        bounds = self.bounds
+        actual_bounds: Bounds = self.bounds
+        if bounds is not None:
+            bounds = np.asarray(bounds)
+            actual_bounds.bounds[bounds != None] = bounds[bounds != None]
+
+        bounds = actual_bounds
         sizes = bounds[1::2] - bounds[::2]
 
         if cell_size is not None:
@@ -185,7 +193,10 @@ class Scene:
 
         return TensorMesh([[(d, n)] for d, n in zip(cell_size, n_cells)], origin=bounds[::2])
 
-    def build(self, cell_size=None, n_cells=None, executor=None, progress=False, cache=None, cache_dir=None):
+    def build(self, cell_size=None, n_cells=None, bounds=None,
+              executor=None, progress=False,
+              cache=None, cache_dir=None,
+              ):
         """根据给定的网格尺寸，构建场景的网格和模型，是create_mesh和build_model的组合
 
         Parameters
@@ -194,6 +205,8 @@ class Scene:
             网格长宽高相等或分别定义网格x, y, z方向宽度大小
         n_cells : number or array(3,)
             总网格数或x, y, z方向网格数
+        bounds : array(6,) or Bounds
+            网格范围，为array(6,)[xmin, xmax, ymin, ymax, zmin, zmax]或Bounds实例，为None的位置会使用默认值
         executor
             并行执行器
         progress
@@ -214,7 +227,7 @@ class Scene:
             Scene.create_mesh : 构造网格
             Scene.build_model : 构造模型
         """
-        mesh = self.create_mesh(cell_size=cell_size, n_cells=n_cells)
+        mesh = self.create_mesh(cell_size=cell_size, n_cells=n_cells, bounds=bounds)
         model = self.build_model(mesh, executor=executor, progress=progress, cache=cache, cache_dir=cache_dir)
 
         return mesh, model
