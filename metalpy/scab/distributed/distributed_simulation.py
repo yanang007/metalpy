@@ -19,7 +19,7 @@ from .policies import Distributable, NotDistributable
 from ...utils.type import pop_or_default, not_none_or_default, get_or_default
 
 
-class DistributedSimulation(LazyClassFactory):
+class DistributedSimulation(LazyClassFactory, BaseSimulation):
     def __init__(self,
                  patch,
                  simulation_class: BaseSimulation,
@@ -187,6 +187,7 @@ class DistributedSimulation(LazyClassFactory):
                     return kernel
 
         if PatchContext.lock.locked():
+            # 需要等PatchContext退出来让加载的Patch解除对上下文的绑定，从而防止序列化方面的问题
             raise AssertionError('Error: linear_operator must be called outside of PatchContext.')
 
         simulation_delegate = self.clone()  # 使用clone创建一个lazy构造器
