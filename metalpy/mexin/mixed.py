@@ -1,6 +1,6 @@
 import inspect
 
-from .injectors import extends, replaces
+from .injectors import extends, replaces, after
 from .patch import Patch
 from .sentinal import NO_MIXIN
 
@@ -13,6 +13,22 @@ class MixinManager:
         self.target = target
 
     def add(self, mixin_type, *args, **kwargs):
+        """将mixin绑定到关联对象上
+
+        Parameters
+        ----------
+        mixin_type
+            mixin类
+        args
+            mixin类的位置参数
+        kwargs
+            mixin类的关键字参数
+
+        Notes
+        -----
+            使用类加参数的形式来定义mixin的主要原因是可能存在mixin中需要持有一些对象的引用导致无法序列化，
+            比如mixin对象内可能持有一个tqdm进度条实例，但如果再包一层参数代理类又会过于冗杂，因此采用这种方式定义mixin
+        """
         target = self.target
         obj = mixin_type(target, *args, **kwargs)
 
@@ -59,18 +75,27 @@ class Mixed(Patch):
     def __init__(self, target):
         super().__init__()
         self.target = target
+        self.pre_applied_mixins = []
+
+    def mix(self, mixin_type, *args, **kwargs):
+        self.pre_applied_mixins.append((mixin_type, args, kwargs))
+        return self
 
     def apply(self):
-        extends(self.target, 'mixins')(self.__mixins)  # 防止离开上下文时，mixin属性被删除
+        self.add_injector(after(self.target.__init__), self.apply_mixins)
+        extends(self.target, 'mixins')(Mixed.mixins)  # 防止离开上下文时，mixin属性被删除
 
     @staticmethod
     @property
-    def __mixins(self):
-        if hasattr(self, '_mixins'):
-            return self._mixins
-        else:
-            self._mixins = MixinManager(self)
-            return self._mixins
+    def mixins(this):
+        if not hasattr(this, '_mixins'):
+            this._mixins = MixinManager(this)
+        return this._mixins
+
+    def apply_mixins(self, this, *_, **__):
+        mixin_manager: MixinManager = this.mixins
+        for m, args, kwargs in self.pre_applied_mixins:
+            mixin_manager.add(m, *args, **kwargs)
 
     @property
     def priority(self):

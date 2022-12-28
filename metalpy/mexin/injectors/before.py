@@ -1,17 +1,14 @@
-import types
-
 from .function_context import FunctionTermination
 from .replaces import Replaces
 from .utils import wrap_method_with_target
 
 
 class Before(Replaces):
-    def __init__(self, target):
-        super().__init__(target, keep_orig='__orig_fn__')
+    def __init__(self, target, nest=None):
+        super().__init__(target, keep_orig='__orig_fn__', nest=nest)
 
     def __call__(self, func):
-        func = wrap_method_with_target(self.nest, func)
-        is_method = isinstance(func, types.MethodType)
+        func, is_method = wrap_method_with_target(self.nest, func)
 
         def wrapper(*args, __orig_fn__=None, **kwargs):
             if is_method:
@@ -22,17 +19,19 @@ class Before(Replaces):
                 return ret.ret
             return __orig_fn__(*args, **kwargs)
 
-        wrapper = wrap_method_with_target(self.nest, wrapper)
+        wrapper, is_method = wrap_method_with_target(self.nest, wrapper)
         return super().__call__(wrapper)
 
 
-def before(target):
+def before(target, nest=None):
     """将代码注入到目标函数前执行
 
     Parameters
     ----------
     target
         待注入的目标函数
+    nest
+        手动指定替换对象的所在空间
 
     Notes
     -----
@@ -44,4 +43,4 @@ def before(target):
         replaces: 替换目标函数
         terminate or terminate_with: 指示以无返回值或指定返回值提前终止函数
     """
-    return Before(target)
+    return Before(target, nest=nest)

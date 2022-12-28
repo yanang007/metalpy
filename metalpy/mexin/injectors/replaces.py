@@ -51,7 +51,7 @@ class Replaces(RecoverableInjector):
         else:
             wrapper = lambda *args, **kwargs: func(*args, **kwargs)
 
-        wrapper = wrap_method_with_target(self.nest, wrapper)
+        wrapper, is_method = wrap_method_with_target(self.nest, wrapper)
         wrapper = create_replacement(wrapper, orig, self)
         cmd = f'self.nest.{self.name} = wrapper'
         exec(cmd)

@@ -9,7 +9,7 @@ class Extends(RecoverableInjector):
         self.name = name
 
     def __call__(self, func):
-        wrapper = wrap_method_with_target(self.nest, func)
+        wrapper, is_method = wrap_method_with_target(self.nest, func)
         wrapper = create_replacement(wrapper, None, self, name=self.name)
         cmd = f'self.nest.{self.name} = wrapper'
         exec(cmd)

@@ -10,3 +10,8 @@ class Clazz:
 class DummyClass:
     def __init__(self):
         print('Dummy here')
+
+
+class ValueHolder:
+    def __init__(self, x=1):
+        self.x = x

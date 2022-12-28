@@ -36,8 +36,7 @@ class Patch(ABC):
             PatchContext: patch上下文
         """
         self.recoverable_injs: list[tuple[RecoverableInjector, tuple, dict]] = None
-        self.__mixin_injs: list[tuple[RecoverableInjector, tuple, dict]] = None
-        self.mixins: dict[str, list[tuple[Mixin, tuple, dict]]] = None
+        self.mixins: dict[type, list[tuple[Mixin, tuple, dict]]] = None
         self._context = None
 
     def get_mixed_classes(self):
@@ -45,7 +44,6 @@ class Patch(ABC):
 
     def pre_apply(self):
         self.recoverable_injs = []
-        self.__mixin_injs = []
         self.mixins = {}
 
     @abstractmethod
@@ -53,20 +51,8 @@ class Patch(ABC):
         pass
 
     def commit(self):
-        if len(self.__mixin_injs) == 0:
-            # 保证Patch可重入
-            for target_type, mixins in self.mixins.items():  # 将混入mixin的代码插入到对应类的构造函数
-                self.__mixin_injs.append((after(target_type.__init__), (self.__apply_mixins(mixins),), {}))
-
         for inj, args, kwargs in self.__get_injs():
             inj(*args, **kwargs)
-
-    @staticmethod
-    def __apply_mixins(mixins):
-        def apply_mixins(this, *_, **__):
-            for mixin_type, args, kwargs in mixins:
-                this.mixins.add(mixin_type, *args, **kwargs)
-        return apply_mixins
 
     def rollback(self):
         for inj, args, kwargs in self.__get_injs(reverse=True):
@@ -75,14 +61,13 @@ class Patch(ABC):
     def post_rollback(self):
         # 防止其中的lambda函数和类指针被pickle
         self.recoverable_injs = None
-        self.__mixin_injs = None
         self.mixins = None
 
     def __get_injs(self, reverse=False):
         if reverse:
-            return reversed(self.recoverable_injs + self.__mixin_injs)
+            return reversed(self.recoverable_injs)
         else:
-            return self.recoverable_injs + self.__mixin_injs
+            return self.recoverable_injs
 
     @property
     def priority(self):
@@ -101,7 +86,45 @@ class Patch(ABC):
         self._context = None
 
     def add_injector(self, inj: RecoverableInjector, *args, **kwargs):
+        """追加injector，执行全局的替换或劫持等操作
+
+        Parameters
+        ----------
+        inj
+            待添加的injector对象
+        args
+            注入操作（injector.__call__）的位置参数
+        kwargs
+            注入操作（injector.__call__）的关键字参数
+
+        See Also
+        --------
+            PatchContext.apply: 应用injector
+        """
         self.recoverable_injs.append((inj, args, kwargs))
 
     def add_mixin(self, target_type, mixin_type: [Mixin], *args, **kwargs):
+        """指定向target_type添加局限于类实例的Mixin，在作例用范围内创建的所有target_type实例都会对应创建并绑定一份该Mixin实例
+
+        Parameters
+        ----------
+        target_type
+            需要添加Mixin的目标类
+        mixin_type
+            待添加的Mixin类
+        args
+            Mixin类的位置参数
+        kwargs
+            Mixin类的关键字参数
+
+        Notes
+        -----
+            Patch本身不会进行任何关于Mixin的操作，Mixin的创建与绑定由PatchContext完成
+
+        See Also
+        --------
+            PatchContext.apply: 执行MixinManager的创建与绑定
+            Mixed.with_mixin: 执行Mixin的定义
+            Mixed.apply_mixin or MixinManager.add: 执行Mixin的创建与绑定
+        """
         self.mixins.setdefault(target_type, []).append((mixin_type, args, kwargs))

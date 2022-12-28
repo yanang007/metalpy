@@ -41,3 +41,24 @@ def test_decorator2(capsys):
 
     y = DummyClass()
     assert y == 1
+
+
+def test_mixin(capsys):
+    from metalpy.mexin import Mixin
+    from metalpy.mexin.mixed import Mixed
+    from metalpy.mexin.patch_context import patched
+    from some_module import ValueHolder
+
+    class Extension(Mixin):
+        def __init__(self, this: ValueHolder):
+            super().__init__(this)
+
+        def increase(self, this):
+            this.x += 1
+
+    with patched(Mixed(ValueHolder).mix(Extension)):
+        dummy = ValueHolder(1)
+
+        assert dummy.x == 1
+        dummy.increase()
+        assert dummy.x == 2

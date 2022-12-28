@@ -74,10 +74,12 @@ def wrap_method_with_target(target, func):
     if target is not None and not isinstance(target, (type, type(types))):
         # 目标不是None、类型与模块，则是实例，func是实例方法，直接绑定
         wrapper = types.MethodType(func, target)
+        is_target_method = True
     else:
         wrapper = func
+        is_target_method = False
 
-    return wrapper
+    return wrapper, is_target_method
 
 
 def split_object_path(module_path: str):
