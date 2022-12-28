@@ -4,7 +4,7 @@ from SimPEG.simulation import BaseSimulation
 from properties import Instance
 
 from metalpy.mepa import Executor
-from metalpy.mexin.injectors import hijacks, reverted, before, terminate_with
+from metalpy.mexin.injectors import reverted, before, terminate_with, replaces
 from metalpy.mexin.lazy_class_delegate import LazyClassFactory
 from .distributed_simulation import DistributedSimulation
 from metalpy.mexin.patch import Patch
@@ -20,7 +20,7 @@ class Distributed(Patch):
 
     def apply(self):
         self.add_mixin(BaseSimulation, Mixin)  # 保证BaseSimulation绑定mixin系统供DistributedSimulation使用
-        self.add_injector(before(Instance, 'validate'), self.disable_type_validates)
+        self.add_injector(before(Instance.validate), self.disable_type_validates)
 
         if 'SimPEG.data' in sys.modules:
             from SimPEG import data
@@ -55,23 +55,16 @@ class Distributed(Patch):
 
         module_path = cls.__module__
 
-        self.add_injector(hijacks(sys.modules[module_path], cls.__name__),
+        self.add_injector(replaces(cls, nest=sys.modules[module_path]),
                           lambda *args, **kwargs: wrapper(*args, **kwargs, **extra_kwargs))
         if parent:
             module_parent_path = '.'.join(module_path.split('.')[:-1])
-            self.add_injector(hijacks(sys.modules[module_parent_path], cls.__name__),
+            self.add_injector(replaces(cls, nest=sys.modules[module_parent_path]),
                               lambda *args, **kwargs: wrapper(*args, **kwargs, **extra_kwargs))
         if child is not None:
             module_child_path = '.'.join((module_path, child))
-            self.add_injector(hijacks(sys.modules[module_child_path], cls.__name__),
+            self.add_injector(replaces(cls, nest=sys.modules[module_child_path]),
                               lambda *args, **kwargs: wrapper(*args, **kwargs, **extra_kwargs))
-
-    def hijack_class(self, cls, wrapper, pass_cls=True, **extra_kwargs):
-        if pass_cls:
-            extra_kwargs['cls'] = cls
-
-        self.add_injector(hijacks(sys.modules[cls.__module__], cls.__name__),
-                          lambda *args, **kwargs: wrapper(*args, **kwargs, **extra_kwargs))
 
     def unbind_context(self):
         """重写unbind_context来延长PatchContext的生命周期
