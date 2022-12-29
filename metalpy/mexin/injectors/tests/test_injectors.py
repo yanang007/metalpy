@@ -1,3 +1,5 @@
+import pytest
+
 from metalpy.mexin.injectors import after, before, terminate_with, modify_params
 
 
@@ -49,19 +51,45 @@ def test_mixin(capsys):
     from metalpy.mexin.patch_context import patched
     from some_module import ValueHolder
 
-    class Extension(Mixin):
+    class SelfIncrement(Mixin):
         def __init__(self, this: ValueHolder):
             super().__init__(this)
 
         def increase(self, this):
             this.x += 1
 
-    with patched(Mixed(ValueHolder).mix(Extension)):
+    with patched(Mixed(ValueHolder).mix(SelfIncrement)):
         dummy = ValueHolder(1)
 
         assert dummy.x == 1
         dummy.increase()
         assert dummy.x == 2
+
+    from metalpy.mexin import Patch
+
+    class DummyPatch(Patch):
+        def __init__(self, x):
+            super().__init__()
+            self.x = x
+
+        def apply(self):
+            def reassign(this, x):
+                this.x = self.x
+
+            self.add_injector(after(ValueHolder.__init__), reassign)
+            self.add_mixin(ValueHolder, SelfIncrement)
+
+    with patched(DummyPatch(x=2)):
+        dummy = ValueHolder(x=1)
+        dummy.increase()
+        assert dummy.x == 3
+
+    dummy = ValueHolder(x=1)
+    assert dummy.x == 1
+    with pytest.raises(AttributeError):
+        dummy.increase()
+    with pytest.raises(AttributeError):
+        _ = dummy.mixins
 
 
 class DummyClassWithComplicateFunction:

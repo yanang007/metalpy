@@ -1,3 +1,5 @@
+import warnings
+
 from .recoverable_injector import RecoverableInjector
 from .utils import wrap_method_with_target, create_replacement
 
@@ -9,6 +11,8 @@ class Extends(RecoverableInjector):
         self.name = name
 
     def __call__(self, func):
+        if getattr(self.nest, self.name, None) is not None:
+            warnings.warn('Trying to extends to a existing target, may lead to unexpected result.')
         wrapper, is_method = wrap_method_with_target(self.nest, func)
         wrapper = create_replacement(wrapper, None, self, name=self.name)
         cmd = f'self.nest.{self.name} = wrapper'

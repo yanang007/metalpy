@@ -83,19 +83,12 @@ class Mixed(Patch):
 
     def apply(self):
         self.add_injector(after(self.target.__init__), self.apply_mixins)
-        extends(self.target, 'mixins')(Mixed.mixins)  # 防止离开上下文时，mixin属性被删除
-
-    @staticmethod
-    @property
-    def mixins(this):
-        if not hasattr(this, '_mixins'):
-            this._mixins = MixinManager(this)
-        return this._mixins
 
     def apply_mixins(self, this, *_, **__):
-        mixin_manager: MixinManager = this.mixins
+        manager = MixinManager(this)
+        this.mixins = manager
         for m, args, kwargs in self.pre_applied_mixins:
-            mixin_manager.add(m, *args, **kwargs)
+            manager.add(m, *args, **kwargs)
 
     @property
     def priority(self):

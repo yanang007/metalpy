@@ -32,13 +32,13 @@ class Replaces(RecoverableInjector):
 
         self.nest = nest
         self.name = target_name
-        cmd = f'self.nest.{self.name}'
-        self.backup = eval(cmd)
+        self.backup = None
         self.keep_orig = keep_orig
         self.force_unbound = force_unbound
 
     def __call__(self, func):
-        orig = self.backup
+        cmd = f'self.nest.{self.name}'
+        self.backup = orig = eval(cmd)
 
         keep_orig = self.keep_orig
         if keep_orig and isinstance(keep_orig, bool):
