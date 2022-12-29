@@ -17,10 +17,6 @@ classifiers = [
 ]
 dependencies = [
     "distributed",
-    #required by SCAB
-    #"SimPEG >= 0.18",
-    #"discretize",
-    #"taichi >= 1.3.0",
     "tqdm",
     "numpy",
     "pandas",
@@ -30,9 +26,23 @@ dependencies = [
     "psutil",
     "pympler",
     "cloudpickle",
-    #"pywin32",
     "properties",
     "colour",
+]
+
+[project.optional-dependencies]
+tests = ["pytest"]
+docs = ["sphinx"]
+scab = [
+    "SimPEG >= 0.18",
+    "discretize",
+    "taichi >= 1.3.0",
+]
+complete = [
+    "metalpy[scab, tests, docs]",
+]
+dev = [
+    "metalpy[complete]",
 ]
 
 [tool.setuptools.packages.find]
