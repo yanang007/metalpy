@@ -6,7 +6,7 @@ from .utils import wrap_method_with_target
 
 class After(Replaces):
     def __init__(self, target, nest=None, keep_retval: Union[bool, str] = False):
-        super().__init__(target, nest=nest, keep_orig='__orig_fn__')
+        super().__init__(target, nest=nest, keep_orig='__orig_fn__', force_unbound=True)
         self.keep_retval = keep_retval
 
     def __call__(self, func):
@@ -16,9 +16,6 @@ class After(Replaces):
             keep_retval = 'retval'
 
         def wrapper(*args, __orig_fn__=None, **kwargs):
-            if is_method:
-                _self = args[0]
-                args = args[1:]
             result = __orig_fn__(*args, **kwargs)
 
             if keep_retval:

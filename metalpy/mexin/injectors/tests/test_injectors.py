@@ -1,4 +1,4 @@
-from metalpy.mexin.injectors import after, before, terminate_with
+from metalpy.mexin.injectors import after, before, terminate_with, modify_params
 
 
 def func(x):
@@ -62,3 +62,27 @@ def test_mixin(capsys):
         assert dummy.x == 1
         dummy.increase()
         assert dummy.x == 2
+
+
+class DummyClassWithComplicateFunction:
+    def func(self, a, b, c='c', *args, d='d', e='e', **kwargs):
+        return a, b, c, d, e, args, kwargs
+
+
+def test_parameters_update():
+    inst = DummyClassWithComplicateFunction()
+
+    @after(inst.func)
+    def after_func2(this, a, b, c, *args, d, e, **kwargs):
+        return a + 1, b, c, d, e, args, kwargs
+
+    @before(inst.func)
+    def before_func2(this, a, b, c, *args, d, e, **kwargs):
+        return modify_params({
+            0: 0,
+            3: 'varargs0',
+            4: 'varargs1',
+        }, b='new b')
+
+    assert inst.func('a', 'b', 'c', '?', '!', d='d', e='e', f='f') == \
+           (0 + 1, 'new b', 'c', 'd', 'e', ('varargs0', 'varargs1'), {'f': 'f'})

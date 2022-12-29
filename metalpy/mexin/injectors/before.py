@@ -1,25 +1,23 @@
-from .function_context import FunctionTermination
+from .function_context import FunctionTermination, ParameterModification
 from .replaces import Replaces
-from .utils import wrap_method_with_target
+from .utils import wrap_method_with_target, update_params
 
 
 class Before(Replaces):
     def __init__(self, target, nest=None):
-        super().__init__(target, keep_orig='__orig_fn__', nest=nest)
+        super().__init__(target, keep_orig='__orig_fn__', nest=nest, force_unbound=True)
 
     def __call__(self, func):
         func, is_method = wrap_method_with_target(self.nest, func)
 
         def wrapper(*args, __orig_fn__=None, **kwargs):
-            if is_method:
-                _self = args[0]
-                args = args[1:]
             ret = func(*args, **kwargs)
-            if isinstance(ret, FunctionTermination):
+            if isinstance(ret, ParameterModification):
+                args, kwargs = update_params(__orig_fn__, args, kwargs, ret.new_args)
+            elif isinstance(ret, FunctionTermination):
                 return ret.ret
             return __orig_fn__(*args, **kwargs)
 
-        wrapper, is_method = wrap_method_with_target(self.nest, wrapper)
         return super().__call__(wrapper)
 
 

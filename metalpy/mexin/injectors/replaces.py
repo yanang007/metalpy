@@ -5,21 +5,19 @@ from .utils import wrap_method_with_target, create_replacement, get_ancestor, ge
 
 
 class Replaces(RecoverableInjector):
-    """
-    nest : 模块，类，实例
-    target : 函数，方法，类名，*属性*
-    """
-    def __init__(self, target, nest=None, keep_orig: Union[str, bool] = False):
+    def __init__(self, target, nest=None, keep_orig: Union[str, bool] = False, force_unbound=False):
         """替换目标函数
 
         Parameters
         ----------
         target
-            待替换的目标，支持 函数，方法，类名
+            待替换的目标，支持函数，方法，类名
         nest
-            手动指定替换对象的所在空间
+            手动指定替换对象的所在空间，支持模块，类，实例
         keep_orig
             指示是否将原函数作为参数传入，当传入str时，将以该名字作为参数名
+        force_unbound
+            如果nest不为对象实例，该参数无效，如果nest为对象实例，则强制不对成员函数进行绑定
 
         Notes
         -----
@@ -37,6 +35,7 @@ class Replaces(RecoverableInjector):
         cmd = f'self.nest.{self.name}'
         self.backup = eval(cmd)
         self.keep_orig = keep_orig
+        self.force_unbound = force_unbound
 
     def __call__(self, func):
         orig = self.backup
@@ -51,7 +50,8 @@ class Replaces(RecoverableInjector):
         else:
             wrapper = lambda *args, **kwargs: func(*args, **kwargs)
 
-        wrapper, is_method = wrap_method_with_target(self.nest, wrapper)
+        if not self.force_unbound:
+            wrapper, is_method = wrap_method_with_target(self.nest, wrapper)
         wrapper = create_replacement(wrapper, orig, self)
         cmd = f'self.nest.{self.name} = wrapper'
         exec(cmd)
@@ -69,9 +69,9 @@ def replaces(target, nest=None, keep_orig=False):
     Parameters
     ----------
     target
-        待替换的目标，支持 函数，方法，类名
+        待替换的目标，支持函数，方法，类名
     nest
-        手动指定替换对象的所在空间
+        手动指定替换对象的所在空间，支持模块，类，实例
     keep_orig
         指示是否将原函数作为参数传入，当传入str时，将以该名字作为参数名
 

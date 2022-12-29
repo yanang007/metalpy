@@ -58,6 +58,10 @@ def get_params_dict(**kwargs):
     return dict(kwargs)
 
 
+def get_params(*args, **kwargs):
+    return list(args), dict(kwargs)
+
+
 def get_full_qualified_class_name(type_or_instance):
     if not isinstance(type_or_instance, type):
         type_or_instance = type(type_or_instance)
