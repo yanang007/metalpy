@@ -105,6 +105,12 @@ class Obj2(Shape3D):
                         raise NotImplementedError(
                             f"Model file splitter is not available for {os.path.splitext(model_path)[1]} file. \n"
                             f"Which is {model_path} .")
+            else:
+                # then model should be PyVista object
+                if not subdivide:
+                    models = [model]
+                elif subdivide == Obj2.SUBDIVIDE_IN_MEMORY or subdivide:  # 导入后通过连通性分析分割模型
+                    models = split_models_in_memory(model, verbose=verbose)
 
             bounds = extract_model_list_bounds(models)
             xl, yl, zl = bounds[1::2] - bounds[0::2]

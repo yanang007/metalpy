@@ -86,7 +86,7 @@ def load_grouped_file(model_file, verbose=True):
 
 
 def split_models_in_memory(model, verbose=True):
-    cache = make_cache_file(f'{hash_model(model)}.sub')
+    cache = make_cache_file(f'{dhash_model(model)}.sub')
     if os.path.exists(cache):
         with open(cache, 'rb') as f:
             if verbose:
