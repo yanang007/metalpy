@@ -1,6 +1,6 @@
 """
 坐标系为右手坐标系，东为+x，地理北为+y，竖直向上为+z
-"SimPEG uses a right handed coordinate system, with z being positive upwards"
+"SimPEG uses a right-handed coordinate system, with z being positive upwards"
 """
 import json
 
@@ -40,10 +40,18 @@ class ArraySlices:
 
 class SensorArray:
     def __init__(self, pts, inplace=False):
-        """
-        构造函数
-        :param pts: 初始观测点集合
-        :param inplace: 指示该实例的所有操作是否为inplace操作
+        """传感器阵列
+
+        Parameters
+        ----------
+        pts
+            初始观测点集合
+        inplace
+            指示该实例的所有操作是否为inplace操作
+
+        Notes
+        -----
+            Todo: 实现旋转平移等操作对1d和2d的支持
         """
         self.pts = np.asarray(pts, dtype=np.float64)
         self.inplace = inplace
@@ -270,6 +278,129 @@ def get_grids(distance, nx, ny, nz):
 
     return array
 
+
+def _check_single_and_iterable(value, value_array, index):
+    if value is not None:
+        return value
+    if value_array is not None:
+        if hasattr(value_array, '__getitem__'):
+            if len(value_array) > index:
+                return value_array[index]
+            else:
+                return None
+        else:
+            return value_array
+    return None
+
+
+def _is_all_not_none(*args):
+    for arg in args:
+        if arg is None:
+            return False
+    return True
+
+
+def _get_seq(dx, nx, xmin, xmax, lx, xs):
+    if xs is not None:
+        return xs
+
+    while True:
+        if lx is None:
+            if nx is not None:
+                if nx == 1:
+                    lx = 0
+                elif dx is not None:
+                    lx = dx * (nx - 1)
+
+        # nx, xmin, xmax
+        if xmin is None:
+            if _is_all_not_none(xmax, lx):
+                xmin = xmax - lx
+            else:
+                break
+
+        if xmax is None:
+            if _is_all_not_none(xmin, lx):
+                xmax = xmin + lx
+            else:
+                break
+
+        if lx is None:
+            lx = xmax - xmin
+
+        if nx is None:
+            if dx is None:
+                break
+            nx = np.ceil(lx / dx).astype(int) + 1
+
+        xs = np.linspace(xmin, xmax, nx)
+        return xs
+
+    return None
+
+
+def get_grids_ex(
+        dx=None, dy=None, dz=None, cell_width=None,
+        nx=None, ny=None, nz=None, n=None,
+        xmin=None, ymin=None, zmin=None, origin=None,
+        xmax=None, ymax=None, zmax=None, end=None,
+        lx=None, ly=None, lz=None, length=None,
+        xs=None, ys=None, zs=None,
+):
+    """通过给定序列参数获取观测网格
+
+    Parameters
+    ----------
+    dx, dy, dz, cell_width
+        x, y, z方向网格大小
+    nx, ny, nz, n
+        x, y, z方向网格数，包含起点和终点
+    xmin, ymin, zmin, origin
+        x, y, z方向网格起点
+    xmax, ymax, zmax, end
+        x, y, z方向网格重点
+    lx, ly, lz, length
+        x, y, z方向网格长度
+    xs, ys, zs
+        x, y, z方向序列
+
+    Returns
+    -------
+        指定规格下的SensorArray
+    """
+    dx = _check_single_and_iterable(dx, cell_width, 0)
+    nx = _check_single_and_iterable(nx, n, 0)
+    xmin = _check_single_and_iterable(xmin, origin, 0)
+    xmax = _check_single_and_iterable(xmax, end, 0)
+    lx = _check_single_and_iterable(lx, length, 0)
+    xs = _get_seq(dx, nx, xmin, xmax, lx, xs)
+
+    dy = _check_single_and_iterable(dy, cell_width, 1)
+    ny = _check_single_and_iterable(ny, n, 1)
+    ymin = _check_single_and_iterable(ymin, origin, 1)
+    ymax = _check_single_and_iterable(ymax, end, 1)
+    ly = _check_single_and_iterable(ly, length, 1)
+    ys = _get_seq(dy, ny, ymin, ymax, ly, ys)
+
+    dz = _check_single_and_iterable(dz, cell_width, 2)
+    nz = _check_single_and_iterable(nz, n, 2)
+    zmin = _check_single_and_iterable(zmin, origin, 2)
+    zmax = _check_single_and_iterable(zmax, end, 2)
+    lz = _check_single_and_iterable(lz, length, 2)
+    zs = _get_seq(dz, nz, zmin, zmax, lz, zs)
+
+    seqs = [xs]
+    if ys is not None:
+        seqs.append(ys)
+        if zs is not None:
+            seqs.append(zs)
+
+    seqs = np.meshgrid(*seqs, indexing='ij')
+    seqs = tuple(seq.ravel() for seq in seqs)
+    pts = np.c_[seqs]
+    return SensorArray(pts)
+
+
 if __name__ == '__main__':
 
     # 构造网格，间隔10m，xyz方向各行
@@ -354,6 +485,3 @@ if __name__ == '__main__':
     ax = plt.axes(projection='3d')
     ax.scatter(*compound_movement.get_points().T, c=ts, cmap='plasma')
     plt.show()
-
-
-
