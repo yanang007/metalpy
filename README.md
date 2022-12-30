@@ -1,5 +1,8 @@
-METAL Essential Tools and Libraries (Python)
-===========================
+<h1 align="center">
+<img src="./branding/logo/metalpylogo.png" width="300" alt="METALpy">
+</h1>
+
+-------------
 
 **METAL Essential Tools and Libraries (Python)** (**metalpy**),
 is a collection of common python tools and libraries for SimPEG and other workflow in META Lab,
