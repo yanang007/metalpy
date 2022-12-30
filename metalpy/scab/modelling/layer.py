@@ -1,6 +1,6 @@
+from metalpy.utils.dhash import dhash
 from .mix_modes import MixMode, Mixer, dhashable_mixer
 from .object import Object
-from ...utils.dhash import dhash
 
 
 class Layer:

@@ -8,6 +8,7 @@ from discretize import TensorMesh
 
 from metalpy.mepa import LinearExecutor
 from metalpy.utils.file import ensure_dir, make_cache_directory
+from metalpy.utils.dhash import dhash
 from .layer import Layer
 from .mix_modes import MixMode
 from .object import Object
@@ -16,7 +17,6 @@ from .shapes.bounds import Bounds
 from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
 from ..utils.hash import dhash_discretize_mesh
-from ...utils.dhash import dhash
 
 
 class Scene:
@@ -35,6 +35,10 @@ class Scene:
             ret.append(shape, value)
 
         return ret
+
+    def with_background(self, value, region_shape=None):
+        self.append_background(value, region_shape)
+        return self
 
     def append(self, shape: Shape3D, models: Union[dict[str, Any], Any]) -> Object:
         """添加三维几何体
@@ -62,10 +66,6 @@ class Scene:
         self.backgrounds_layer.append(obj)
 
         return obj
-
-    def with_background(self, value, region_shape=None):
-        self.append_background(value, region_shape)
-        return self
 
     @property
     def bounds(self):

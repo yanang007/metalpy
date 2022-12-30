@@ -1,6 +1,6 @@
 from numpy.testing import assert_equal
 
-from metalpy.scab.modelling.scene import Scene
+from metalpy.scab.modelling import Scene
 from metalpy.scab.modelling.shapes import Cuboid, Prism, Ellipsoid, Tunnel, Obj2
 
 

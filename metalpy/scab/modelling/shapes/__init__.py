@@ -5,3 +5,5 @@ from .tunnel import Tunnel
 from .prism import Prism
 from .obj import Obj
 from .obj2 import Obj2
+
+from .bounds import Bounds, NoBounds

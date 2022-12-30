@@ -1,7 +1,6 @@
 import pyvista as pv
 
-from metalpy.scab.modelling.bounded import Bounded
-from metalpy.scab.modelling.scene import Scene
+from metalpy.scab.modelling import Scene, Bounded
 from metalpy.scab.modelling.shapes import Cuboid, Prism, Ellipsoid, Tunnel, Obj2
 
 

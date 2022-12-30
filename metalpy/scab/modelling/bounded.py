@@ -1,4 +1,4 @@
-from metalpy.scab.modelling.shapes.bounds import Bounds
+from .shapes import Bounds
 
 
 class Bounded(Bounds):

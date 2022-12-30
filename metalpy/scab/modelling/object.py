@@ -1,8 +1,8 @@
 from typing import Any, Union
 
+from metalpy.utils.dhash import dhash
 from .mix_modes import MixMode, Mixer, dhashable_mixer
 from .shapes import Shape3D
-from ...utils.dhash import dhash
 
 
 class Object:

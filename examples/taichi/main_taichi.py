@@ -8,7 +8,7 @@ from numpy.testing import assert_almost_equal
 
 import metalpy
 from metalpy.scab import simpeg_patched, Progressed
-from metalpy.scab.modelling.scene import Scene
+from metalpy.scab.modelling import Scene
 from metalpy.scab.modelling.shapes import Ellipsoid
 from metalpy.scab.utils.misc import define_inducing_field
 from metalpy.utils.time import Timer
