@@ -3,6 +3,7 @@
 </h1>
 
 -------------
+![PyPI](https://img.shields.io/pypi/v/metalpy)
 
 **METAL Essential Tools and Libraries (Python)** (**metalpy**),
 is a collection of common python tools and libraries for SimPEG and other workflow in META Lab,
