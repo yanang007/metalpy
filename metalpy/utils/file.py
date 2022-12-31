@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from .type import ensure_as_iterable
 
@@ -117,11 +118,18 @@ def locate_files_by(paths, *, prefix=None, suffix=None, ext=None, contains=None,
                           mode='all')
 
 
+def git_ignore_directory(path):
+    ignore_file = (Path(path) / '.gitignore')
+    if not ignore_file.exists():
+        ignore_file.write_text('# Created by metalpy automatically.\n*')
+
+
 def make_cache_file(name):
     cache_dir = './.cache'
     ret = os.path.join(cache_dir, name)
     ret = os.path.abspath(ret)
     ensure_filepath(ret)
+    git_ignore_directory(cache_dir)
     return ret
 
 
@@ -130,4 +138,5 @@ def make_cache_directory(name):
     ret = os.path.join(cache_dir, name)
     ret = os.path.abspath(ret)
     ensure_dir(ret)
+    git_ignore_directory(cache_dir)
     return ret
