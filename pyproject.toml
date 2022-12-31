@@ -10,7 +10,7 @@ authors = [
     { name="yanang007", email="yanang007@gmail.com" },
 ]
 description = "Essential tools and libraries for SimPEG and other workflow in META Lab."
-readme = "README.md"
+readme = "README-pypi.md"
 requires-python = ">=3.7"
 license = { file = "LICENSE.txt" }
 classifiers = [
