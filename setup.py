@@ -4,6 +4,8 @@ import re
 from setuptools import setup
 from pathlib import Path
 
+from versioningit import get_cmdclasses
+
 
 @contextlib.contextmanager
 def generate_pypi_readme():
@@ -44,4 +46,7 @@ def generate_pypi_readme():
 
 
 with generate_pypi_readme():
-    setup()
+    setup(
+        cmdclass=get_cmdclasses(),
+        # Other arguments go here
+    )
