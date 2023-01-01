@@ -1,6 +1,7 @@
 import inspect
 
 from .injectors import extends, replaces, after
+from .mixin import Mixin
 from .patch import Patch
 from .sentinal import NO_MIXIN
 
@@ -35,8 +36,10 @@ class MixinManager:
         # 获取mixin的所有方法
         methods = inspect.getmembers(obj, predicate=lambda x: inspect.ismethod(x) or inspect.isfunction(x))
         for name, method in methods:
-            if name.startswith('__') or name in ['post_apply']:
-                # 跳过私有函数和mixin类构造过程的函数
+            if name.startswith('__') or \
+               f'_{mixin_type.__name__}__' in name or \
+               name in Mixin.__dict__:
+                # 跳过1. 魔术方法 2. 私有方法 3. post_apply等mixin类的方法
                 continue
 
             obj.__dict__[name] = self.bind_method(method, name=name)
