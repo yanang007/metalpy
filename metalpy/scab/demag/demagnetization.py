@@ -32,7 +32,7 @@ class Demagnetization:
         self.mesh = mesh
         self.source_field = source_field
 
-        cell_centers = receiver_points = mesh.cell_centers
+        cell_centers = mesh.cell_centers
         if active_ind is not None:
             cell_centers = cell_centers[active_ind]
 
@@ -62,7 +62,6 @@ class Demagnetization:
             array(nC, 3)，三轴磁化率矩阵
         """
         nC = self.Xn.shape[0]
-        nObs = self.receiver_locations.shape[0]
         H0 = self.source_field.unit_vector
         H0 = np.tile(H0[None, :], nC).ravel()
 

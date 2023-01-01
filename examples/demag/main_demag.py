@@ -7,16 +7,15 @@ from discretize.utils import mkvc
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
-from forward import setup_cuboids_model
 from metalpy.mepa import LinearExecutor
 from metalpy.scab import simpeg_patched, Progressed, Tied
 from metalpy.scab.demag import Demagnetization
 from metalpy.scab.demag.factored_demagnetization import FactoredDemagnetization
 from metalpy.scab.demag.utils import get_prolate_spheroid_demag_factor
+from metalpy.scab.modelling import Scene
 from metalpy.scab.modelling.shapes import Ellipsoid
 from metalpy.scab.utils.misc import define_inducing_field
 
-from config import get_exec_config
 from metalpy.utils.taichi import ti_prepare, ti_config
 from metalpy.utils.time import Timer
 
@@ -29,13 +28,10 @@ def main(grid_size, gpu=False):
     timer = Timer()
 
     with timer:
-        model = Ellipsoid.spheroid(a, c, polar_axis=0)
-        mesh, model, model_map, active_cells = \
-            setup_cuboids_model(grid_size=grid_size, sus=80, cuboids=[model],
-                                xspan=[-c, c], yspan=[-a, a], zspan=[-a, a],
-                                executor=LinearExecutor(1),
-                                # plot_output=True
-                                )
+        spheroid = Ellipsoid.spheroid(a, c, polar_axis=0)
+        mesh, model = Scene.of(spheroid, models=80).build(cell_size=grid_size, executor=LinearExecutor(1))
+        active_cells = model != 0
+        model = model[active_cells]
 
         source_field = define_inducing_field(50000, 45, 20)
 
@@ -93,7 +89,7 @@ def main(grid_size, gpu=False):
 
 
 if __name__ == '__main__':
-    executor = get_exec_config()  # LinearExecutor(1)  #
+    executor = LinearExecutor(1)
 
     workers = [w for w in executor.get_workers() if 'large-mem' in w.group]
     if len(workers) == 1:

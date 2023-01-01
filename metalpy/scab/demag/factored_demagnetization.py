@@ -44,8 +44,7 @@ class FactoredDemagnetization:
             若source_field非空，返回在该场作用下的三轴等效磁化率（三轴磁化强度除以场源强度）
         """
         model = np.asarray(model)
-        if self.N is not None:
-            k = get_demag_apparent_k(model, self.N)
-            k = k * source_field.unit_vector
+        k = get_demag_apparent_k(model, self.N)
+        k = k * source_field.unit_vector
 
-            return k
+        return k
