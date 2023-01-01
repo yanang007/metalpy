@@ -1,7 +1,6 @@
 [build-system]
 requires = ["setuptools>=63.0", "versioningit>=2.0.0"]
-build-backend = "metalpy.setuptools_backend"
-backend-path = ["buildtools"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "metalpy"

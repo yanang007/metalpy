@@ -4,7 +4,33 @@ import re
 from setuptools import setup
 from pathlib import Path
 
+from setuptools.command.sdist import sdist
 from versioningit import get_cmdclasses
+
+
+class RebuildSdistCommand(sdist):
+    """因未知原因，打包出的sdist中路径会记录成绝对路径，因此在打包后添加一个workaround将路径转换为相对路径"""
+
+    def make_distribution(self):
+        super(RebuildSdistCommand, self).make_distribution()
+        gz_file = None
+        for file in self.archive_files:
+            if file.endswith('.tar.gz'):
+                gz_file = Path(file)
+                break
+
+        if gz_file is not None:
+            import gzip
+            print(f'rebuilding {gz_file}')
+            tar_file = gz_file.with_suffix('')
+            g_file = gzip.GzipFile(gz_file)
+            tar_file.write_bytes(g_file.read())
+            g_file.close()
+
+            with gzip.open(gz_file, "wb") as f_out:
+                f_out.write(tar_file.read_bytes())
+
+            tar_file.unlink()
 
 
 @contextlib.contextmanager
@@ -28,7 +54,7 @@ def generate_pypi_readme():
     root = 'github.com/yanang007/metalpy'
     if not pypi_readme_file.exists():
         long_description = readme_file.read_text(encoding='utf-8')
-        long_description = re.compile(r'\(\.?[/|\\]?(.*?\.(md|rst))\)')\
+        long_description = re.compile(r'\(\.?[/|\\]?(.*?\.(md|rst))\)') \
             .sub(rf'({root}/tree/main/\1)', long_description)
         long_description = long_description.replace('./', f'{root}/raw/main/')
 
@@ -47,6 +73,6 @@ def generate_pypi_readme():
 
 with generate_pypi_readme():
     setup(
-        cmdclass=get_cmdclasses(),
+        cmdclass=get_cmdclasses({'sdist': RebuildSdistCommand}),
         # Other arguments go here
     )
