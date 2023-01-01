@@ -50,6 +50,8 @@ complete = [
 dev = [
     "metalpy[complete]",
     "versioningit",
+    "tomli",
+    "build",
 ]
 
 [tool.setuptools.packages.find]

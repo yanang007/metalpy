@@ -31,6 +31,8 @@ pytest
 
 # Dev
 versioningit
+tomli
+build
 
 # Misc
 properties

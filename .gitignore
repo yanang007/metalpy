@@ -14,5 +14,6 @@
 dist/*
 build/*
 *.egg-info/*
-
-
+.gitmoji-changelogrc
+README-pypi.md
+docs/changelog/CHANGELOG-ALL.md
