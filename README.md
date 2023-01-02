@@ -2,6 +2,12 @@
 <img src="./branding/logo/metalpylogo.png" width="300" alt="METALpy">
 </h1>
 
+<div align="center">
+
+[简体中文](README.zh_CN.md) | [English](README.md)
+
+</div>
+
 -------------
 ![PyPI](https://img.shields.io/pypi/v/metalpy)
 
