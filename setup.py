@@ -51,7 +51,7 @@ def generate_pypi_readme():
     """
     readme_file = Path("README.md")
     pypi_readme_file = Path('README-pypi.md')
-    root = 'github.com/yanang007/metalpy'
+    root = 'https://github.com/yanang007/metalpy'
     if not pypi_readme_file.exists():
         long_description = readme_file.read_text(encoding='utf-8')
         long_description = re.compile(r'\(\.?[/|\\]?(.*?\.(md|rst))\)') \
