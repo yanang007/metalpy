@@ -89,19 +89,10 @@ class Pavement:
         self.description = properties['project']['description']
         self.name = properties['project']['name']
 
-        self.is_release = args.release is not None
+        self.is_release = False
         if args.release is not None:
             self.version = args.release
-            if self.version.startswith('v'):
-                self.version = self.version[1:]
-        else:
-            sys.path.insert(0, repo_path.__fspath__())
-            version = importlib.import_module(f'{self.name}.version')
-            self.version = version.short_version
-            if version.post_distance > 0:
-                self.version = f'{self.version}+post{version.post_distance}'
-
-        self.version_tag = f'v{self.version}'
+            self.is_release = True
 
         self.commit = args.commit
         self.update = args.update
@@ -118,17 +109,59 @@ class Pavement:
         self._head_description = None
 
     @property
+    def version(self):
+        """根据当前仓库状态和命令行参数可能存在三种状态
+        1. 命令行使用--release或-r指定发布版本，则此时version与指定的值一致
+        2. 命令行未指定，但当前仓库的HEAD是release commit，则version与当前仓库release commit指定的版本一致
+        3. 命令行未指定且当前仓库的HEAD不是release commit，则version为上一个版本加上"+post{d}"后缀，其中{d}为到上一次发布的commit距离
+        """
+        if getattr(self, '_version', None) is None:
+            if self.is_head_release_commit():
+                self.version = self.head_description
+            else:
+                sys.path.insert(0, self.repo_path.__fspath__())
+                version = importlib.import_module(f'{self.name}.version')
+                _version = version.short_version
+                if version.post_distance > 0:
+                    _version = f'{_version}+post{version.post_distance}'
+                self.version = _version
+
+        return self._version
+
+    @version.setter
+    def version(self, value):
+        """version的setter会去掉传入version字符串的v前缀，以适用于version_tag属性
+        """
+        if value is None:
+            return
+        self._version = value
+        if self._version.startswith('v'):
+            self._version = self.version[1:]
+
+    @property
+    def version_tag(self):
+        """version_tag特指以"v"开头的版本号
+        """
+        return f'v{self.version}'
+
+    @property
     def head_description(self):
-        if self._head_description is None:
+        """获取git describe的结果
+        """
+        if getattr(self, '_head_description', None) is None:
             # 假定version tag里不包含非ascii字符
             self._head_description = subprocess.check_output(['git', 'describe'], **{'text': 'utf-8'}).strip()
 
         return self._head_description
 
     def is_head_release_commit(self):
-        return '-' not in self.head_description
+        """判断当前HEAD是否为release commit
+        """
+        return re.compile(r'-\d+-\w{8}$').search(self.head_description) is None
 
     def is_head_current_release_commit(self):
+        """判断当前HEAD是否就是--release或-r指定的版本release commit
+        """
         return self.head_description == self.version_tag
 
     def delete_tag(self):
