@@ -1,6 +1,7 @@
 import copy
 import functools
 import os
+from typing import Sized
 
 import taichi as ti
 from taichi import TaichiSyntaxError, TaichiCompilationError, TaichiRuntimeError
@@ -182,6 +183,21 @@ class WrappedFieldsBuilder:
         if self.snode_tree is not None:
             self.snode_tree.destroy()
 
+    def place_dense(self, shape, *arr_types, axes=None):
+        if axes is None:
+            if isinstance(shape, Sized):
+                ndim = len(shape)
+            else:
+                ndim = 1
+            axes = ti.axes(*list(range(ndim)))
+        arr_types = tuple(wrap_type_as_ti_field(t) for t in arr_types)
+        self.dense(axes, shape).place(*arr_types)
+
+        if len(arr_types) == 1:
+            return arr_types[0]
+        else:
+            return arr_types
+
     def __getattr__(self, name):
         return getattr(self.fields_builder, name)
 
@@ -190,6 +206,12 @@ class WrappedFieldsBuilder:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.destroy()
+
+
+def wrap_type_as_ti_field(t):
+    if not isinstance(t, ti.Field):
+        return ti_field(t)
+    return t
 
 
 def ti_FieldsBuilder():

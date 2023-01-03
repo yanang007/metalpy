@@ -137,6 +137,11 @@ class TaichiSimulation3DIntegral:
         else:
             ret = ti_ndarray(dtype=ti.f64, shape=(n_rows, n_cols))
 
+        # TODO: 由于Taichi目前采用i32作为索引类型，数组元素总数不能超过int32的上限，否则行为未定义
+        #  如果后续Taichi支持i64索引类型，则可以去掉这个限制
+        assert n_rows * n_cols < np.iinfo(np.int32).max, \
+            "Taichi doesn't support arrays with more than INT32_MAX elements."
+
         monitor = None
         if progress is not None:
             progress.reset(total=n_rows * n_cols)
@@ -167,6 +172,7 @@ class TaichiSimulation3DIntegral:
             # TODO: 由于Taichi目前采用i32作为索引类型，
             #  主循环使用的ti.ndrange也会受限于这个限制，
             #  因此需要分批处理，如果后续Taichi支持i64索引类型，则可以去掉这个限制
+            # 注：该分块依据是ti.ndrange循环的下标，且只对forward_only有效，核矩阵的大小仍然会收到这个限制
             # TODO: 对于GPU版，可能需要基于GPU显存大小进行批次划分
             n_rx_rows = receiver.n_rows
             n_batches = int(np.ceil((n_rx_rows * self.n_cells) / np.iinfo(np.int32).max))
