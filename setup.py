@@ -1,5 +1,6 @@
 import contextlib
 import re
+import subprocess
 
 from setuptools import setup
 from pathlib import Path
@@ -9,10 +10,23 @@ from versioningit import get_cmdclasses
 
 
 class RebuildSdistCommand(sdist):
-    """因未知原因，打包出的sdist中路径会记录成绝对路径，因此在打包后添加一个workaround将路径转换为相对路径"""
+    def exclude_untracked_source_files(self):
+        """移除git未追踪的.py源文件
+        TODO: 如果将来加入预生成的.py文件可能需要修改该函数
+        """
+        tracked_files = subprocess.check_output(['git', 'ls-files'], **{'text': 'utf-8'})
+        tracked_files = tracked_files.strip().replace('\\', '/')  # 统一为反斜杠
+        tracked_files = set(tracked_files.splitlines())
 
-    def make_distribution(self):
-        super(RebuildSdistCommand, self).make_distribution()
+        files = self.filelist.files
+        for i in range(len(files) - 1, 0, -1):
+            if files[i].endswith('.py') and files[i].replace('\\', '/') not in tracked_files:
+                print(f"removing untracked source file '{files[i]}'")
+                del files[i]
+
+    def rebuild_sdist(self):
+        """因未知原因，打包出的sdist中路径会记录成绝对路径，因此在打包后添加一个workaround将路径转换为相对路径
+        """
         gz_file = None
         for file in self.archive_files:
             if file.endswith('.tar.gz'):
@@ -31,6 +45,13 @@ class RebuildSdistCommand(sdist):
                 f_out.write(tar_file.read_bytes())
 
             tar_file.unlink()
+
+    def make_distribution(self):
+        self.exclude_untracked_source_files()
+
+        super(RebuildSdistCommand, self).make_distribution()
+
+        self.rebuild_sdist()
 
 
 @contextlib.contextmanager
