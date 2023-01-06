@@ -1,19 +1,23 @@
 import os
 from pathlib import Path
+from typing import Union
 
 from .type import ensure_as_iterable
 
-
-def ensure_dir(dir):
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-    return dir
+PathLike = Union[str, os.PathLike]
 
 
-def ensure_filepath(path):
-    dir, filename = os.path.split(path)
-    ensure_dir(dir)
-    return path
+def ensure_dir(path: PathLike):
+    path = Path(path)
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+    return os.fspath(path)
+
+
+def ensure_filepath(path: PathLike):
+    path = Path(path)
+    ensure_dir(path.parent)
+    return os.fspath(path)
 
 
 def locate_file(path, *predicates, mode='first'):
@@ -125,18 +129,18 @@ def git_ignore_directory(path):
 
 
 def make_cache_file(name):
-    cache_dir = './.cache'
-    ret = os.path.join(cache_dir, name)
-    ret = os.path.abspath(ret)
+    cache_dir = Path('./.cache')
+    ret = cache_dir / name
+    ret = ret.absolute()
     ensure_filepath(ret)
     git_ignore_directory(cache_dir)
-    return ret
+    return os.fspath(ret)
 
 
 def make_cache_directory(name):
-    cache_dir = './.cache'
-    ret = os.path.join(cache_dir, name)
-    ret = os.path.abspath(ret)
+    cache_dir = Path('./.cache')
+    ret = cache_dir / name
+    ret = ret.absolute()
     ensure_dir(ret)
     git_ignore_directory(cache_dir)
-    return ret
+    return os.fspath(ret)
