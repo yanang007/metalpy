@@ -1,7 +1,7 @@
 from typing import Union
 
 from .recoverable_injector import RecoverableInjector
-from .utils import wrap_method_with_target, create_replacement, get_ancestor, get_parent
+from .utils import wrap_method_with_target, create_replacement, get_ancestor, get_nest
 
 
 class Replaces(RecoverableInjector):
@@ -28,7 +28,11 @@ class Replaces(RecoverableInjector):
         target_name = target.__name__
         root_target = get_ancestor(target)
         if nest is None:
-            nest = get_parent(root_target)
+            nest = get_nest(root_target)
+            if nest is None:
+                raise NotImplementedError(
+                    f'Unable locate where {root_target.__name__} is, consider specify it by "nest" param.'
+                )
 
         self.nest = nest
         self.name = target_name

@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import types
 
 from .property_replacement import PropertyReplacement
@@ -101,7 +102,6 @@ def update_params(func, args, kwargs, new_kwargs):
         tuple(updated_args, updated_kwargs)
         更新后的args和kwargs
     """
-    import inspect
     from metalpy.utils.type import get_or_default, not_none_or_default
 
     # func可能被替换过，导致函数签名和原函数不一致，因此尝试回溯原函数从而获取真实函数签名
@@ -215,7 +215,100 @@ def get_object_by_path(path):
         return getattr(importlib.import_module(module_path), object_name)
 
 
-def get_parent(obj):
+def get_object_from(source, path: str):
+    """用于进行从module或者其他对象中提取类似 'xxx.yyy.zzz' 路径的对象
+
+    Parameters
+    ----------
+    source
+        源，比如module或class
+    path
+        待获取的对象路径
+
+    Returns
+    -------
+        获取到的对象，或None
+    """
+    ret = source
+
+    if path == '':
+        return ret
+
+    for seg in path.split('.'):
+        ret = getattr(ret, seg, None)
+        if ret is None:
+            break
+
+    return ret
+
+
+def get_nest_path_by_qualname(obj):
+    """通过解析__qualname__提取对象在模块中的嵌套路径，如果是模块下直接定义的对象，则返回空字符串
+
+    Parameters
+    ----------
+    obj
+        待获取嵌套路径的对象，可以为type、类实例或方法以及其他具有__qualname__的对象
+
+    Returns
+    -------
+        如果目标属于某嵌套定义下，则返回__qualname__中提取的嵌套路径（不包含对象本身）
+        如果是模块下直接定义的对象，则返回空字符串
+    """
+    segments = obj.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)
+    return '.'.join(segments[:-1])
+
+
+def get_class_that_defined_method(meth):
+    """获取定义指定方法的类
+
+    Parameters
+    ----------
+    meth
+        方法实例
+
+    Returns
+    -------
+        定义meth的类，或者None，代表该方法无法找到
+
+    Notes
+    -----
+        由于Python3移除了所有类和类中定义的方法的直接关联，因此只能通过一些方法来“猜测”，所以理论上存在无法获取到正确结果的情况
+
+        比如如果随意修改__qualname__或者__module__的值会导致结果不可预测
+
+    References
+    ----------
+        By @Yoel and with assistance from comments
+
+        "Get class from meth.__globals__" patch by @Alexander_McFarlane
+
+        https://stackoverflow.com/questions/3589311/get-defining-class-of-unbound-method-object-in-python-3/
+
+        Modified to support statically nested class using 'get_object_from'
+    """
+    import functools
+    if isinstance(meth, functools.partial):
+        return get_class_that_defined_method(meth.func)
+    if inspect.ismethod(meth) or (inspect.isbuiltin(meth) and
+                                  getattr(meth, '__self__', None) is not None and
+                                  getattr(meth.__self__, '__class__', None)):
+        for cls in inspect.getmro(meth.__self__.__class__):
+            if meth.__name__ in cls.__dict__:
+                return cls
+        meth = getattr(meth, '__func__', meth)  # fallback to __qualname__ parsing
+    if inspect.isfunction(meth):
+        class_path = get_nest_path_by_qualname(meth)
+        cls = get_object_from(inspect.getmodule(meth), class_path)
+        if cls is None:
+            path_segs = class_path.split('.')
+            cls = get_object_from(meth.__globals__.get(path_segs[0]), '.'.join(path_segs))
+        if isinstance(cls, type):
+            return cls
+    return getattr(meth, '__objclass__', None)  # handle special descriptor objects
+
+
+def get_nest(obj):
     """获取对象所在的类或模块
 
     Parameters
@@ -226,10 +319,25 @@ def get_parent(obj):
     Returns
     -------
         方法所在的类
+
+    Notes
+    -----
+        由于Python3移除了所有类和类中定义的方法以及和模块的直接关联，因此只能通过一些方法来“猜测”，所以理论上存在无法获取到正确结果的情况
+
+        比如如果随意修改__qualname__或者__module__的值会导致结果不可预测
     """
-    if isinstance(obj, types.MethodType):
+    obj = get_ancestor(obj)
+    if inspect.ismethod(obj):
         return obj.__self__
+    elif inspect.isclass(obj):
+        module = inspect.getmodule(obj)
+        path = get_nest_path_by_qualname(obj)
+        return get_object_from(module, path)
     else:
-        cls_name = split_object_path(get_ancestor(obj).__qualname__)[0]
-        module_path = obj.__module__
-        return get_object_by_path('.'.join((module_path, cls_name)))
+        ret = get_class_that_defined_method(obj)
+        if ret is None:
+            if obj.__qualname__ == obj.__name__:
+                # 猜测定义在模块中
+                ret = inspect.getmodule(obj)
+
+        return ret
