@@ -1,7 +1,8 @@
 from typing import Union
 
+from metalpy.utils.object_path import get_nest
 from .recoverable_injector import RecoverableInjector
-from .utils import wrap_method_with_target, create_replacement, get_ancestor, get_nest
+from .utils import wrap_method_with_target, create_replacement, get_ancestor
 
 
 class Replaces(RecoverableInjector):

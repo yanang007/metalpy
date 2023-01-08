@@ -60,17 +60,3 @@ def get_params_dict(**kwargs):
 
 def get_params(*args, **kwargs):
     return list(args), dict(kwargs)
-
-
-def get_full_qualified_class_name(type_or_instance):
-    if not isinstance(type_or_instance, type):
-        type_or_instance = type(type_or_instance)
-
-    return '.'.join((type_or_instance.__module__, get_class_name(type_or_instance)))
-
-
-def get_class_name(type_or_instance):
-    if not isinstance(type_or_instance, type):
-        type_or_instance = type(type_or_instance)
-
-    return type_or_instance.__name__

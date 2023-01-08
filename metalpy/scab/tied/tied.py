@@ -5,17 +5,16 @@ from SimPEG.simulation import BaseSimulation
 from metalpy.mexin import Mixin
 from metalpy.mexin import Patch
 from metalpy.utils.taichi import ti_prepare, ti_arch, ti_reset
-from metalpy.utils.type import get_params_dict, get_full_qualified_class_name, get_or_default, get_class_name
+from metalpy.utils.type import get_params_dict
 
-from .potential_fields.magnetics.simulation import TiedSimulation3DIntegralMixin
-from ..distributed.policies import Distributable
-
-implementations = {
-    'SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral': TiedSimulation3DIntegralMixin,
-}
+from metalpy.utils.object_path import get_full_qualified_path
+from metalpy.mexin.utils import TypeMap
+from metalpy.scab.distributed.policies import Distributable
 
 
 class TaichiContext(Mixin):
+    _implementations = TypeMap()
+
     def __init__(self, this, arch=None, max_cpu_threads=None, **kwargs):
         """初始化taichi上下文
 
@@ -43,12 +42,10 @@ class TaichiContext(Mixin):
         ti_prepare(**params, **kwargs)
 
     def post_apply(self, this):
-        type_name = get_class_name(this)
-        path = get_full_qualified_class_name(this)
-        impl = get_or_default(implementations, path, None)
+        impl = TaichiContext._implementations.get(type(this))
 
         if impl is None:
-            print(f'Taichi support for {type_name} is not implemented. Ignoring it.')
+            print(f'Taichi support for {get_full_qualified_path(this)} is not implemented. Ignoring it.')
             return
 
         this.mixins.add(impl)
@@ -62,3 +59,16 @@ class Tied(Patch, Distributable):
 
     def apply(self):
         self.add_mixin(BaseSimulation, TaichiContext, **self.params)
+
+
+def __implements(target):
+    def decorator(func):
+        TaichiContext._implementations.map(target, func)
+        return func
+    return decorator
+
+
+@__implements('SimPEG.potential_fields.magnetics.simulation.Simulation3DIntegral')
+def _():
+    from .potential_fields.magnetics.simulation import TiedSimulation3DIntegralMixin
+    return TiedSimulation3DIntegralMixin

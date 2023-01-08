@@ -1,4 +1,4 @@
-from metalpy.mexin.injectors import get_nest
+from metalpy.utils.object_path import get_nest
 
 
 def reget_class(cls):
