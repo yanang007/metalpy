@@ -1,0 +1,3 @@
+[submodule "buildtools/gitmoji-changelog"]
+	path = buildtools/gitmoji-changelog
+	url = https://github.com/yanang007/gitmoji-changelog

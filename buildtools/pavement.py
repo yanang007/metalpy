@@ -1,8 +1,17 @@
 """
 用于生成Release commit以及changelog和软件包
-除了requirements-dev以外还需要环境中存在git，nodejs以及gitmoji-changelog
+除了requirements-dev以外还需要环境中存在git，nodejs以及定制的gitmoji-changelog（以子模块形式存在）
 
-    npm install -g gitmoji-changelog
+如果你在clone本仓库时没有使用--recursive来初始化子模块，那么请先用如下命令拉取子模块
+    git submodule update --init --recursive
+
+如果没有安装yarn的话可能还需要安装yarn
+    npm install -g yarn
+
+然后使用yarn安装gitmoji-changelog所需依赖（假设你当前在项目根目录）
+    cd ./buildtools/gitmoji-changelog & yarn
+
+环境准备完成！
 
 基础用法：
     python ./buildtools/pavement.py -u -w -r {version} -c -b
@@ -79,9 +88,10 @@ class Pavement:
                             type=str, default=None)
         args = parser.parse_args()
 
+        self.pavement_path = Path(os.path.realpath(sys.argv[0])).resolve()
         if args.path is not None:
+            self.repo_path = repo_path = Path(args.path).resolve()
             os.chdir(args.path)
-            self.repo_path = repo_path = Path(args.path)
         else:
             self.repo_path = repo_path = Path().resolve()
 
@@ -100,7 +110,7 @@ class Pavement:
         self.build = args.build
 
         # 指示是否只进行build only，该情况下不会更新readme
-        self.build_only = not self.commit and not self.commit and not self.commit
+        self.build_only = self.build and not self.commit and not self.update and not self.withdraw
 
         self.changelog_file = repo_path / f'docs/changelog/{self.version}-changelog.md'
         self.release_notes_file = repo_path / f'docs/release/{self.version}-notes.md'
@@ -199,8 +209,10 @@ class Pavement:
             changelog_file.unlink()
 
         # TODO: node执行文件用subprocess函数会提示找不到文件
-        ret = os.system(f'gitmoji-changelog --preset generic --output "{output_file}"')
-        assert ret == 0
+        changelog_script_path = 'gitmoji-changelog/packages/gitmoji-changelog-cli/src/index.js'
+        subprocess.check_call(['node', f'{self.pavement_path.parent / changelog_script_path}',
+                               '--preset', 'generic',
+                               '--output', f'{output_file}'])
 
         changelog_config_file.unlink()
 
