@@ -2,7 +2,7 @@ import importlib
 import inspect
 import sys
 import warnings
-from typing import Optional
+from typing import Optional, Union
 
 from metalpy.utils.dhash import dhash
 
@@ -40,24 +40,58 @@ class DottedName:
         >>> DottedName('x.y.z').without_prefix('x', 'z.y')
         <<< DottedName('y.z')  # only 'x' matches the prefix, and is removed
         """
-        ret = DottedName(self)
-        for prefix in prefixes:
-            prefix = DottedName(prefix)
-            matched = True
-            for i, part in enumerate(prefix.parts):
-                if ret.parts[i] != part:
-                    matched = False
+        trimed = 0
+        if len(prefixes) == 0:
+            trimed = 1
+        else:
+            for prefix in prefixes:
+                prefix = DottedName(prefix)
+                matched = True
+                for i, rhs in enumerate(prefix.parts):
+                    if self.parts[trimed + i] != rhs:
+                        matched = False
+                        break
+                if matched:
+                    trimed += len(prefix)
+                else:
                     break
-            if matched:
-                ret.parts = ret.parts[len(prefix):]
-            else:
-                break
+
+        ret = DottedName()
+        ret.parts = self.parts[trimed:]
+        return ret
+
+    def suffix(self, length=1):
+        """获取当前路径中指定长度的后缀
+
+        Parameters
+        ----------
+        length
+            需要获取的后缀长度
+
+        Returns
+        -------
+            当前路径的后缀数组，长度小于等于length
+
+        Examples
+        --------
+        >>> DottedName('x.y.z').suffix()
+        <<< DottedName('z')
+        """
+        ret = DottedName()
+        length = min(self.__len__(), length)
+        ret.parts = self.parts[-length:]
 
         return ret
 
     @property
     def empty(self):
         return self.__len__() == 0
+
+    def __getitem__(self, item):
+        return self.parts[item]
+
+    def __setitem__(self, key, value):
+        self.parts[key] = value
 
     def __iter__(self):
         for part in self.parts:
@@ -275,6 +309,9 @@ class ObjectPath:
         return dhash(self.to_dotted())
 
 
+objpath_like = Union[DottedName, ObjectPath, str]
+
+
 def objpath(obj) -> str:
     """获取obj所代表的Python对象路径，类似os.fspath
 
@@ -356,6 +393,40 @@ def get_object_from(source, path: str):
     return ret
 
 
+def get_qualname(obj):
+    """获取目标的模块内路径，如果不存在__qualname__属性则返回__name__属性
+
+    Parameters
+    ----------
+    obj
+        目标对象
+
+    Returns
+    -------
+        目标的模块内路径
+    """
+    ret = getattr(obj, '__qualname__', None)
+    if ret is None:
+        ret = getattr(obj, '__name__', None)
+
+    return ret
+
+
+def get_module_name(obj):
+    """获取目标关联的模块名，一般是__module__
+
+    Parameters
+    ----------
+    obj
+        目标对象
+
+    Returns
+    -------
+        目标关联的模块名
+    """
+    return getattr(obj, '__module__', None)
+
+
 def get_full_qualified_path(obj):
     """从目标对象本身获取目标的包括模块名在内的全限定路径，使用 : 分割包和包内路径
 
@@ -378,6 +449,63 @@ def get_full_qualified_path(obj):
         该函数只接受类或函数等具有__module__和__qualname__的目标，常规类的实例无法以此方法获得路径
     """
     return objpath(ObjectPath.of(obj))
+
+
+def reassign_object_name(obj, new_name: objpath_like = None, new_qualname: objpath_like = None):
+    """重新给obj赋予名字，同时修改__name__和__qualname__，如果不存在则添加
+
+    Parameters
+    ----------
+    obj
+        待改名的对象
+    new_name
+        新的名字
+    new_qualname
+        新的模块内全限定名
+    """
+    if new_name is not None:
+        new_name = DottedName(new_name)
+        obj.__name__ = objpath(new_name)
+        qualname = getattr(obj, '__qualname__', None)
+        if qualname is not None:
+            qualname = DottedName(qualname)
+            qualname[-1] = new_name
+            obj.__qualname__ = objpath(qualname)
+    elif new_qualname is not None:
+        new_qualname = DottedName(new_qualname)
+        obj.__qualname__ = objpath(new_qualname)
+        obj.__name__ = objpath(new_qualname.suffix(1))
+    else:
+        warnings.warn(f'{reassign_object_name.__name__} called without giving new names.')
+
+
+def reassign_object_module(obj, new_module: objpath_like):
+    """重新给obj赋予所关联的模块，如果不存在__module__则会直接添加
+
+    Parameters
+    ----------
+    obj
+        待修改关联模块的对象
+    new_module
+        新的所属模块名
+    """
+    obj.__module__ = objpath(new_module)
+
+
+def mock_object(obj, obj_to_be_mocked):
+    """修改obj的__module__，__name__和__qualname__属性，使之在ObjectPath的视角中和obj_to_be_mocked一样
+
+    Parameters
+    ----------
+    obj
+        需要进行伪装的对象
+    obj_to_be_mocked
+        目标对象
+    """
+    for prop in ['__module__', '__name__', '__qualname__']:
+        val = getattr(obj_to_be_mocked, prop, None)
+        if val is not None:
+            setattr(obj, prop, val)
 
 
 def get_nest_prefix_by_qualname(obj) -> str:
