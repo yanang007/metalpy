@@ -3,12 +3,12 @@ import sys
 from SimPEG.simulation import BaseSimulation
 
 from metalpy.mepa import Executor
+from metalpy.mexin import Mixin
+from metalpy.mexin.patch import Patch
 from metalpy.mexin.injectors import reverted, replaces
 from metalpy.mexin.lazy_class_delegate import LazyClassFactory
 from .distributed_simulation import DistributedSimulation
-from metalpy.mexin.patch import Patch
 from .utils import reget_class
-from ...mexin import Mixin
 
 
 class Distributed(Patch):

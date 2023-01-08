@@ -39,6 +39,7 @@ class LazyClassFactory:
 
         Returns
         -------
+        ret
             搜索到的目标参数
         """
         if args is None:
@@ -93,6 +94,7 @@ class LazyClassFactory:
 
         Returns
         -------
+        ret
             搜索到的目标参数
         """
         return self.find_param(lambda k, v: isinstance(v, type), remove=remove, repl=repl, args=args, kwargs=kwargs)
@@ -115,6 +117,7 @@ class LazyClassFactory:
 
         Returns
         -------
+        ret
             搜索到的目标参数
         """
         return self.find_param(lambda k, v: k == name, remove=remove, repl=repl, args=args, kwargs=kwargs)
@@ -131,6 +134,7 @@ class LazyClassFactory:
 
         Returns
         -------
+        ret
             构造的类对象
         """
         args = self.args.copy()

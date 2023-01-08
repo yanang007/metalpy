@@ -56,6 +56,7 @@ class Executor(ABC):
 
         Returns
         -------
+        ret
             以原本结构构造的future结果
 
         Notes
@@ -87,6 +88,7 @@ class Executor(ABC):
 
         Returns
         -------
+        ret
             future的结果
 
         Notes

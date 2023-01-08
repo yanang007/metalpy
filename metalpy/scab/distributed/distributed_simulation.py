@@ -12,11 +12,10 @@ from properties.utils import undefined
 from metalpy.mepa import Executor
 from metalpy.mexin import LazyClassFactory, PatchContext
 from metalpy.mexin.injectors import is_or_is_replacement, reverted
-from .utils import reget_class
-
-from ..simpeg_patch_context import simpeg_patched
+from metalpy.utils.type import pop_or_default, not_none_or_default, get_or_default
+from metalpy.scab.simpeg_patch_context import simpeg_patched
 from .policies import Distributable, NotDistributable
-from ...utils.type import pop_or_default, not_none_or_default, get_or_default
+from .utils import reget_class
 
 
 class DistributedSimulation(LazyClassFactory, BaseSimulation):
@@ -105,12 +104,21 @@ class DistributedSimulation(LazyClassFactory, BaseSimulation):
 
     def compress_model(self, sim_delegate, model):
         """用于压缩模型，以减少传输量
-        主要包含model和simulation里的ind_active
-        TODO: 有需要时可能也要压缩simulation中的mesh
 
-        :param sim_delegate: 仿真类构造器
-        :param model: 模型
-        :return: 压缩后的仿真类构造器和模型
+        主要包含model和simulation里的ind_active
+
+        Parameters
+        ----------
+        sim_delegate
+            仿真类构造器
+
+        model
+            模型
+
+        Returns
+        -------
+        ret
+            压缩后的仿真类构造器和模型
         """
         from pympler.asizeof import asizeof
 

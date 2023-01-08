@@ -60,6 +60,7 @@ class TypeMap:
 
         Returns
         -------
+        ret
             获取的类型
         """
         ret = get_or_default(self.registries, ObjectPath.of(type_key), _default=None)
@@ -80,6 +81,7 @@ class TypeMap:
 
         Returns
         -------
+        ret
             获取的类型
         """
         ret = self.strict_get(type_key, default=default)
@@ -103,6 +105,7 @@ class TypeMap:
 
         Returns
         -------
+        ret
             获取TypeMap的所有原始键
         """
         return self.registries.keys()
@@ -112,6 +115,7 @@ class TypeMap:
 
         Returns
         -------
+        ret
             获取TypeMap的所有原始值
         """
         return self.registries.values()

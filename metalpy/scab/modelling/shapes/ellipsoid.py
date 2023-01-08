@@ -33,6 +33,7 @@ class Ellipsoid(Shape3D):
 
         Returns
         -------
+        ret
             半径为r的球体
         """
         return Ellipsoid(r, r, r)
@@ -59,6 +60,7 @@ class Ellipsoid(Shape3D):
 
         Returns
         -------
+        ret
             中心点在原点，半赤道轴长为a，半极轴长为c，极轴为polar_axis的旋转椭球体
         """
         r = [a, a, a]

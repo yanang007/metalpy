@@ -1,7 +1,7 @@
 import json
 from typing import Union
 
-from ..shapes import Prism, Cuboid
+from metalpy.scab.modelling.shapes import Prism, Cuboid
 
 
 def dump_ptopo(models: list[Prism, Cuboid], f=None) -> list:
@@ -27,6 +27,7 @@ def dump_ptopo(models: list[Prism, Cuboid], f=None) -> list:
 
     Returns
     -------
+    ret
         ptopo定义下的该棱柱场景list
     """
     try:
@@ -71,6 +72,7 @@ def load_ptopo(ptopo: Union[str, list]) -> list[Prism]:
 
     Returns
     -------
+    ret : list[Prism]
         一个由棱柱组成的列表，包含ptopo文件中定义的所有棱柱
     """
     if isinstance(ptopo, str):

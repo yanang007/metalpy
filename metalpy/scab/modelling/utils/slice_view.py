@@ -64,7 +64,8 @@ class SliceView:
 
         Returns
         -------
-            SubplotSwitched，用于with块
+        ret : SubplotSwitched
+            用于with块
         """
         return SubplotSwitched(self.plotter, self.index_loc)
 

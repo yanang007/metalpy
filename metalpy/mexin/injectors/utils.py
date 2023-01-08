@@ -32,7 +32,7 @@ def update_params(func, args, kwargs, new_kwargs):
 
     Returns
     -------
-        tuple(updated_args, updated_kwargs)
+    updated_args, updated_kwargs
         更新后的args和kwargs
     """
     from metalpy.utils.type import get_or_default, not_none_or_default

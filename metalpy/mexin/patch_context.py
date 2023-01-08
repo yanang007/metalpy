@@ -79,6 +79,7 @@ class PatchContext:
 
         Returns
         -------
+        ret
             所有的patch
         """
         if reverse:
@@ -91,6 +92,7 @@ class PatchContext:
 
         Returns
         -------
+        ret
             所有的patch
         """
         return self.patches

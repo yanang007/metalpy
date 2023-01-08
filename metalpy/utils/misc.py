@@ -2,7 +2,7 @@ from random import random
 
 import numpy as np
 
-from ..scab.utils.misc import define_inducing_field as new_define_inducing_field
+from metalpy.scab.utils.misc import define_inducing_field as new_define_inducing_field
 
 
 def define_inducing_field(s, i, d):

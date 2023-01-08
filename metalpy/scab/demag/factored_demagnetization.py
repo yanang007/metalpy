@@ -2,8 +2,8 @@ from typing import Iterable
 
 import numpy as np
 
+from metalpy.scab.utils.misc import Field
 from .utils import get_demag_apparent_k
-from ..utils.misc import Field
 
 
 class FactoredDemagnetization:
@@ -39,8 +39,8 @@ class FactoredDemagnetization:
 
         Returns
         -------
-            array(nC, 3)
-            若source_field为空，返回三轴视磁化率
+        ret : array(nC, 3)
+            若source_field为空，返回三轴视磁化率；
             若source_field非空，返回在该场作用下的三轴等效磁化率（三轴磁化强度除以场源强度）
         """
         model = np.asarray(model)

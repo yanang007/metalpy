@@ -68,6 +68,7 @@ class Object:
 
         Returns
         -------
+        ret
             混合操作后的结果
         """
         return self.mixer(prev_layer, current_layer)

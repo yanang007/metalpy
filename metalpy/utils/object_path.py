@@ -30,6 +30,7 @@ class DottedName:
 
         Returns
         -------
+        ret
             按顺序依次匹配prefixes中前缀，如果匹配，则移除，否则返回当前结果
 
         Examples
@@ -70,6 +71,7 @@ class DottedName:
 
         Returns
         -------
+        ret
             当前路径的后缀数组，长度小于等于length
 
         Examples
@@ -322,6 +324,7 @@ def objpath(obj) -> str:
 
     Returns
     -------
+    ret
         obj所代表的对象路径
 
     Notes
@@ -378,6 +381,7 @@ def get_object_from(source, path: str):
 
     Returns
     -------
+    ret
         获取到的对象，或None
     """
     ret = source
@@ -403,6 +407,7 @@ def get_qualname(obj):
 
     Returns
     -------
+    ret
         目标的模块内路径
     """
     ret = getattr(obj, '__qualname__', None)
@@ -422,6 +427,7 @@ def get_module_name(obj):
 
     Returns
     -------
+    ret
         目标关联的模块名
     """
     return getattr(obj, '__module__', None)
@@ -437,6 +443,7 @@ def get_full_qualified_path(obj):
 
     Returns
     -------
+    ret
         目标对象的全限定路径字符串
 
     Examples
@@ -518,7 +525,8 @@ def get_nest_prefix_by_qualname(obj) -> str:
 
     Returns
     -------
-        如果目标属于某嵌套定义下，则返回__qualname__中提取的嵌套路径（不包含对象本身的名字）
+    ret
+        如果目标属于某嵌套定义下，则返回__qualname__中提取的嵌套路径（不包含对象本身的名字），
         如果是模块下直接定义的对象，则返回空字符串
     """
     segments = obj.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)
@@ -527,13 +535,17 @@ def get_nest_prefix_by_qualname(obj) -> str:
 
 def get_object_by_path(path):
     """通过全限定路径获取目标
+
     Parameters
     ----------
     path
         目标的全限定路径
+
     Returns
     -------
+    ret
         全限定路径所标识的目标
+
     Examples
     --------
     >>> get_object_by_path('xxx.yyy.zzz.Target')
@@ -552,6 +564,7 @@ def get_class_that_defined_method(meth):
 
     Returns
     -------
+    ret
         定义meth的类，或者None，代表该方法无法找到
 
     Notes
@@ -601,6 +614,7 @@ def get_nest(obj):
 
     Returns
     -------
+    ret
         方法所在的类
 
     Notes
@@ -640,6 +654,7 @@ def _resolve_name_compat(name):
 
     Returns
     -------
+    ret
         目标对象
     """
     global _NAME_PATTERN

@@ -17,7 +17,8 @@ def get_prolate_spheroid_demag_factor(eps, polar_axis=2):
 
     Returns
     -------
-    长旋转椭球体的退磁系数
+    ret
+        长旋转椭球体的退磁系数
     """
     ratio = eps
     ratio2m1 = ratio * ratio - 1
@@ -36,14 +37,14 @@ def get_demag_apparent_k(k: Union[float, np.ndarray], N):
 
     Parameters
     ----------
-    k : float | array-like(3,) | array-like(3,n)
+    k : float | array-like(3,) | array-like(n, 3)
         均匀介质磁化率
     N : array-like(3,)
         三个方向上的退磁系数
 
     Returns
     -------
-    out : ndarray(3,n)
+    ret : array(n, 3)
         视磁化率
     """
     N = np.asarray(N)

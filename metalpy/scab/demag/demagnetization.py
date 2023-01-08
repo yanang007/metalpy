@@ -7,8 +7,8 @@ import taichi as ti
 from discretize.base import BaseTensorMesh
 from discretize.utils import mkvc
 
-from ..utils.misc import Field
-from ...utils.taichi import ti_kernel, ti_field, ti_FieldsBuilder, ti_cfg, ti_ndarray, ti_test_snode_support
+from metalpy.scab.utils.misc import Field
+from metalpy.utils.taichi import ti_kernel, ti_field, ti_FieldsBuilder, ti_cfg, ti_ndarray, ti_test_snode_support
 
 
 class Demagnetization:
@@ -51,7 +51,8 @@ class Demagnetization:
         self.Zn = np.c_[mkvc(zn1), mkvc(zn2)]
 
     def dpred(self, model):
-        """
+        """计算退磁效应下的等效磁化率
+
         Parameters
         ----------
         model: array-like(nC,)
@@ -59,7 +60,8 @@ class Demagnetization:
 
         Returns
         -------
-            array(nC, 3)，三轴磁化率矩阵
+        ret : array(nC, 3)
+            三轴等效磁化率矩阵
         """
         nC = self.Xn.shape[0]
         H0 = self.source_field.unit_vector

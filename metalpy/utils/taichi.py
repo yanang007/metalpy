@@ -226,6 +226,7 @@ def ti_test_snode_support() -> bool:
 
     Returns
     -------
+    ret
         当前显卡cuda版本是否支持SNode和FieldsBuilder
     """
     ti_init_once()
@@ -261,6 +262,7 @@ def ti_ndarray_from(arr, sdim=0):
 
     Returns
     -------
+    ret
         返回结构维度为sdim的Taichi ndarray
     """
     ti_init_once()
@@ -311,6 +313,7 @@ def ti_index(i, j, stype: ti.template(), struct_size, array_size):
 
     Returns
     -------
+    ret
         1d索引
     """
 

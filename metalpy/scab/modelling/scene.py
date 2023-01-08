@@ -9,6 +9,7 @@ from discretize import TensorMesh
 from metalpy.mepa import LinearExecutor
 from metalpy.utils.file import ensure_dir, make_cache_directory
 from metalpy.utils.dhash import dhash
+from metalpy.scab.utils.hash import dhash_discretize_mesh
 from .layer import Layer
 from .mix_modes import MixMode
 from .object import Object
@@ -16,7 +17,6 @@ from .shapes import Shape3D
 from .shapes.bounds import Bounds
 from .shapes.full_space import FullSpace
 from .shapes.shape3d import bounding_box_of
-from ..utils.hash import dhash_discretize_mesh
 
 
 class Scene:
@@ -52,6 +52,7 @@ class Scene:
 
         Returns
         -------
+        ret
             返回构造的三维几何体
         """
         obj = Object(shape, models)
@@ -94,6 +95,7 @@ class Scene:
 
         Returns
         -------
+        ret
             若所有模型只包含默认键，则返回一个数组，为默认键下的值的构建结果
 
             否则返回字典，包含所有键以及该键下的值的构建结果
@@ -159,6 +161,7 @@ class Scene:
 
         Returns
         -------
+        ret
             构建的网格
 
         Notes
@@ -218,9 +221,8 @@ class Scene:
 
         Returns
         -------
-            (网格，模型)
-            网格输出同create_mesh
-            模型输出同build_model
+        ret
+            (mesh, model)，网格输出同create_mesh，模型输出同build_model
 
         See Also
         --------

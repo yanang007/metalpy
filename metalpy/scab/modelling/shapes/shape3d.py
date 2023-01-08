@@ -24,7 +24,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]
+        ret
+            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]，
             指示对应网格位置是否有效或有效的程度， 0 代表非活动网格
         """
         mesh = self.before_place(mesh_cell_centers, worker_id)
@@ -46,7 +47,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]
+        ret
+            布尔数组或浮点数组，浮点数组原则上来说取值范围应为[0, 1]，
             指示对应网格位置是否有效或有效的程度，0代表非活动网格
 
         Notes
@@ -64,7 +66,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            int, 当前shape的哈希值
+        ret : int
+            当前shape的哈希值
         """
         raise NotImplementedError()
 
@@ -89,6 +92,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             PolyData 表示的 Shape
 
         Notes
@@ -112,6 +116,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             本地坐标系下 PolyData 表示的 Shape
 
         Notes
@@ -126,9 +131,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在世界坐标系下的中心点坐标
-
-            array(3) [x, y, z]
+        ret : array(3)
+            Shape在世界坐标系下的中心点坐标[x, y, z]
         """
         return self.transforms.transform(self.local_center)
 
@@ -138,9 +142,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在世界坐标系下的长方体包围盒
-
-            array(6) [x0, x1, y0, y1, z0, z1]
+        ret : array(6)
+            Shape在世界坐标系下的长方体包围盒[x0, x1, y0, y1, z0, z1]
         """
         bounds = self.oriented_bounds
         ret = np.zeros(6)
@@ -155,9 +158,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在世界坐标系下的八点包围盒
-
-            array(8, 3) [[x0, y0, z0], ...[x7, y7, z7]]
+        ret : array(8, 3)
+            Shape在世界坐标系下的八点包围盒[[x0, y0, z0], ...[x7, y7, z7]]
         """
         bounds = self.local_oriented_bounds
         return self.transforms.transform(bounds).T
@@ -168,9 +170,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在局部坐标系下的中心点坐标
-
-            array(3) [x, y, z]
+        ret : array(3)
+            Shape在局部坐标系下的中心点坐标[x, y, z]
         """
         bounds = self.local_oriented_bounds
         return bounds.mean(axis=0)
@@ -183,9 +184,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在局部坐标系下的长方体包围盒
-
-            array(6) [x0, x1, y0, y1, z0, z1]
+        ret : array(6)
+            Shape在局部坐标系下的长方体包围盒[x0, x1, y0, y1, z0, z1]
         """
         bounds = self.local_oriented_bounds
         ret = np.zeros(6)
@@ -202,9 +202,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在局部坐标系下的八点包围盒
-
-            array(8, 3) [[x0, y0, z0], ...[x7, y7, z7]]
+        ret : array(8, 3)
+            Shape在局部坐标系下的八点包围盒[[x0, y0, z0], ...[x7, y7, z7]]
         """
         local_bounds = self.local_bounds
         x, y, z = np.meshgrid(local_bounds[0:2], local_bounds[2:4], local_bounds[4:6], indexing='ij')
@@ -216,9 +215,8 @@ class Shape3D(ABC):
 
         Returns
         -------
-            Shape在局部坐标系下的长方体包围盒三个方向上的尺寸
-
-            array(3) [dx, dy, dz]
+        ret : array(3)
+            Shape在局部坐标系下的长方体包围盒三个方向上的尺寸[dx, dy, dz]
         """
         bounds = self.local_bounds
         return bounds[1::2] - bounds[::2]
@@ -235,6 +233,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             当inplace为True，返回当前实例，否则返回一个变换后的新对象
         """
         if inplace:
@@ -257,6 +256,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             当inplace为True，返回当前实例，否则返回一个平移后的新对象
         """
         return self.apply(Translation(x, y, z), inplace=inplace)
@@ -277,6 +277,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             当inplace为True，返回当前实例，否则返回一个旋转后的新对象
         """
         return self.apply(Rotation(y, a, b, degrees=degrees, seq=seq), inplace=inplace)
@@ -293,6 +294,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             默认应用与当前对象，并返回当前对象
         """
         return self.translate(x, y, z, inplace=inplace)
@@ -313,6 +315,7 @@ class Shape3D(ABC):
 
         Returns
         -------
+        ret
             默认应用与当前对象，并返回当前对象
         """
         return self.rotate(y, a, b, degrees=degrees, seq=seq, inplace=inplace)

@@ -55,6 +55,7 @@ def define_inducing_field(strength, inclination, declination) -> Field:
 
     Returns
     -------
+    ret
         定义的物理场
     """
     return Field(strength, inclination, declination)
@@ -79,6 +80,7 @@ def define_magnetics_survey(receiver_points: np.ndarray,
 
     Returns
     -------
+    ret
         包含接收点和外部场信息的磁力学Survey
     """
     from SimPEG.potential_fields import magnetics

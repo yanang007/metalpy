@@ -1,20 +1,20 @@
-import sys
-
 import numpy as np
 
 from metalpy.utils.type import get_or_default
 
 
 def dhash(*objs):
-    """deterministic hash
+    """确定性哈希，通过将Python原生hash中非确定性的部分替换来实现，例如str，并通过扩展方法支持更多对象
 
     Parameters
     ----------
     objs
+        待哈希的对象
 
     Returns
     -------
-
+    ret : DHash
+        DHash实例
     """
     return DHash(*objs)
 
@@ -30,7 +30,7 @@ class DHash:
     hashers = {}
 
     def __init__(self, *objs, convert=True):
-        """
+        """确定性哈希，通过将Python原生hash中非确定性的部分替换来实现，例如str，并通过扩展方法支持更多对象
 
         Parameters
         ----------
@@ -41,8 +41,6 @@ class DHash:
         --------
             DHash.__init__本身不会对输入的对象进行任何转换，默认均为dhash可接受对象
             请优先使用dhash()函数
-
-
         """
         if convert:
             self.objs = tuple(DHash.convert_to_dhashable(obj) for obj in objs)

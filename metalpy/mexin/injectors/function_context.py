@@ -13,17 +13,18 @@ class FunctionTermination:
             self.ret = rets
 
 
-def terminate():
+def terminate() -> FunctionTermination:
     """指示无返回值提前终止函数执行
 
     Returns
     -------
-        FunctionTermination，由Before注解接收并执行函数终止操作
+    ret
+        由Before注解接收并执行函数终止操作
     """
     return FunctionTermination()
 
 
-def terminate_with(*rets):
+def terminate_with(*rets) -> FunctionTermination:
     """指示以指定的返回值提前终止函数
 
     Parameters
@@ -33,7 +34,8 @@ def terminate_with(*rets):
 
     Returns
     -------
-        FunctionTermination，由Before注解接收并执行函数终止操作，然后返回指定的返回值
+    ret
+        由Before注解接收并执行函数终止操作，然后返回指定的返回值
     """
     return FunctionTermination(*rets)
 
@@ -45,7 +47,7 @@ class ParameterModification:
         self.new_args = new_args
 
 
-def modify_params(new_args=None, **new_kwargs):
+def modify_params(new_args=None, **new_kwargs) -> ParameterModification:
     """指示修改函数参数
 
     Parameters
@@ -57,7 +59,8 @@ def modify_params(new_args=None, **new_kwargs):
 
     Returns
     -------
-        ParameterModification，由Before注解接收并执行参数修改
+    ret
+        由Before注解接收并执行参数修改
     """
     new_args = copy.copy(new_args)
     new_args.update(new_kwargs)
