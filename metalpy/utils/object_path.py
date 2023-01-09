@@ -93,7 +93,16 @@ class DottedName:
         return self.parts[item]
 
     def __setitem__(self, key, value):
-        self.parts[key] = value
+        if key < 0:
+            key = len(self.parts) + key
+
+        if isinstance(value, str):
+            self.__setitem__(key, DottedName(value))
+        elif isinstance(value, (list, tuple, DottedName)):
+            self.parts = [*self.parts[0:key], *value, *self.parts[key + 1:]]
+        else:
+            warnings.warn('Result of assigning a non-str object to be part of DottedName may be unexpected.')
+            self.__setitem__(key, DottedName(str(value)))
 
     def __iter__(self):
         for part in self.parts:
