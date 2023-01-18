@@ -11,6 +11,46 @@ repos:
         stages: [commit-msg]
         language: python
         entry: python -m buildtools.git_hooks.check_gitmoji
+        additional_dependencies:
+          - .[complete]
+#
+#      - id: metalpy-lint
+#        name: Check commit message to match the gitmoji convention
+#        always_run: true
+#        stages: [commit-msg]
+#        language: python
+#        entry: nox --non-interactive --envdir .cache/dev/venv -s lint()
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+        args:
+          - --max-line-length=119
+
+#    # 丢到nox执行，更便捷地安装依赖
+#  - repo: https://github.com/pre-commit/mirrors-mypy
+#    rev: v0.991
+#    hooks:
+#      - id: mypy
+#        args:
+#          - --check-untyped-defs
+
+#  - repo: https://github.com/pre-commit/mirrors-prettier
+#    rev: "v3.0.0-alpha.4"
+#    hooks:
+#      - id: prettier
+#        types_or: [yaml, markdown, html, css, scss, javascript, json]
+#        args: [--prose-wrap=always]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
