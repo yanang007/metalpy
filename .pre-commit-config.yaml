@@ -13,7 +13,7 @@ repos:
         entry: python -m buildtools.git_hooks.check_gitmoji
         additional_dependencies:
           - .[complete]
-#
+
 #      - id: metalpy-lint
 #        name: Check commit message to match the gitmoji convention
 #        always_run: true
