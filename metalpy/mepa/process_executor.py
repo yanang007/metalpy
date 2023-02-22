@@ -1,9 +1,12 @@
 from concurrent.futures import Future
+from functools import partial
+
 from loky import get_reusable_executor
 
 import psutil
 
 from .executor import Executor, traverse_args
+from .utils import exception_caught
 from .worker import Worker
 
 
@@ -26,7 +29,11 @@ class ProcessExecutor(Executor):
         see also:
         ProcessPoolExecutor.submit
         """
-        # 自动提取所有future
+        # 用于在func抛出异常时，打印异常栈信息然后传播
+        # TODO: 让异常栈停留在异常抛出的位置，可能需要一些hack
+        func = partial(exception_caught, func)
+
+        # 自动将传入的future提取为值
         args, kwargs = traverse_args(args, kwargs,
                                      lambda x: x if not isinstance(x, Future) else self.gather([x])[0])
         return self.pool.submit(func, *args, **kwargs)
