@@ -62,6 +62,9 @@ def modify_params(new_args=None, **new_kwargs) -> ParameterModification:
     ret
         由Before注解接收并执行参数修改
     """
-    new_args = copy.copy(new_args)
+    if new_args is None:
+        new_args = {}
+    else:
+        new_args = copy.copy(new_args)
     new_args.update(new_kwargs)
     return ParameterModification(new_args)

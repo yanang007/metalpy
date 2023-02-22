@@ -1,5 +1,6 @@
 import inspect
 import types
+import warnings
 
 from metalpy.mexin.injectors.replacement import get_orig
 
@@ -35,7 +36,7 @@ def update_params(func, args, kwargs, new_kwargs):
     updated_args, updated_kwargs
         更新后的args和kwargs
     """
-    from metalpy.utils.type import get_or_default, not_none_or_default
+    from metalpy.utils.type import not_none_or_default
 
     # func可能被替换过，导致函数签名和原函数不一致，因此尝试回溯原函数从而获取真实函数签名
     # get_orig在不存在原函数时会返回None，因此需要判断
@@ -43,6 +44,7 @@ def update_params(func, args, kwargs, new_kwargs):
     arg_spec = inspect.getfullargspec(func)
     updated_args = None
     updated_kwargs = None
+    new_kwargs = dict(new_kwargs)
 
     arg_spec_args = arg_spec.args
     if isinstance(func, types.MethodType):
@@ -50,7 +52,7 @@ def update_params(func, args, kwargs, new_kwargs):
         arg_spec_args = arg_spec_args[1:]
 
     for i, arg_name in enumerate(arg_spec_args):
-        new_arg = get_or_default(new_kwargs, arg_name, _default=None)
+        new_arg = new_kwargs.pop(arg_name, None)
         if new_arg is not None:
             if i < len(args):
                 # 如果下标在args范围内，则一定是对应位置的参数
@@ -64,7 +66,7 @@ def update_params(func, args, kwargs, new_kwargs):
                 updated_kwargs[arg_name] = new_arg
 
     for i in range(len(args)):
-        new_arg = get_or_default(new_kwargs, i, _default=None)
+        new_arg = new_kwargs.pop(i, None)
         if new_arg is not None:
             # 通过下标替换args中的参数，主要用于varargs参数
             if updated_args is None:
@@ -72,12 +74,24 @@ def update_params(func, args, kwargs, new_kwargs):
             updated_args[i] = new_arg
 
     for arg_name in arg_spec.kwonlyargs:
-        new_arg = get_or_default(new_kwargs, arg_name, _default=None)
+        new_arg = new_kwargs.pop(arg_name, None)
         if new_arg is not None:
             # 通过关键字替换kwargs中的kwonlyargs
             if updated_kwargs is None:
                 updated_kwargs = dict(kwargs)
             updated_kwargs[arg_name] = new_arg
+
+    if arg_spec.varkw is not None:
+        # 其他参数都已经放入对应位置
+        # 有varkw，则将剩下的关键字参数全部传入
+        if updated_kwargs is None:
+            updated_kwargs = dict(kwargs)
+        for k in list(new_kwargs.keys()):
+            if not isinstance(k, str):
+                # new_kwargs里还有数字这类位置参数或者甚至其他错误参数
+                warnings.warn(f'update_params received invalid parameter key: {k}. Ignoring it.')
+                new_kwargs.pop(k)
+        updated_kwargs.update(new_kwargs)
 
     if updated_args is None:
         updated_args = args
