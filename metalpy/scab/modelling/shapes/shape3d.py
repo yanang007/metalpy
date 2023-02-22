@@ -261,8 +261,8 @@ class Shape3D(ABC):
         """
         return self.apply(Translation(x, y, z), inplace=inplace)
 
-    def rotate(self, y, a, b, degrees=True, seq='xyz', inplace=False):
-        """对Shape进行旋转，方向遵循左手准则
+    def rotate(self, y, a, b, degrees=False, seq='xyz', inplace=False):
+        """对Shape进行旋转，方向遵循右手准则
 
         Parameters
         ----------
@@ -299,8 +299,8 @@ class Shape3D(ABC):
         """
         return self.translate(x, y, z, inplace=inplace)
 
-    def rotated(self, y, a, b, degrees=True, seq='xyz', inplace=True):
-        """对Shape进行旋转
+    def rotated(self, y, a, b, degrees=False, seq='xyz', inplace=True):
+        """对Shape进行旋转，方向遵循右手准则
 
         Parameters
         ----------

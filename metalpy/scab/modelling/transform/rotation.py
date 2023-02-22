@@ -1,4 +1,3 @@
-import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 from metalpy.utils.dhash import dhash
@@ -6,17 +5,16 @@ from .transform import Transform
 
 
 class Rotation(Transform):
-    def __init__(self, y, a, b, degrees=True, seq='xyz'):
+    def __init__(self, y, a, b, degrees=False, seq='xyz'):
         super().__init__()
         self.params = (y, a, b, degrees, seq)
-        self.rot = R.from_euler(seq, [y, a, b], degrees=degrees).as_matrix()
-        self.irot = R.from_euler(seq[::-1], [-b, -a, -y], degrees=degrees).as_matrix()
+        self.rot = R.from_euler(seq, [y, a, b], degrees=degrees)
 
     def transform(self, mesh):
-        return np.asarray(mesh).dot(self.rot)
+        return self.rot.apply(mesh)
 
     def inverse_transform(self, mesh):
-        return np.asarray(mesh).dot(self.irot)
+        return self.rot.apply(mesh, inverse=True)
 
     def clone(self):
         return Rotation(*self.params)
