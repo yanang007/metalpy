@@ -72,4 +72,4 @@ source-file = "metalpy/_version.py"
 build-file = "metalpy/_version.py"
 require-match = true
 regex = '^(\s*__version__,\s*__version_tuple__\s*=\s*.*?[\r\n]+)'
-replacement = "__version__ = {version}\n__version_tuple__ = {version_tuple}\n"
+replacement = "__version__ = '{version}'\n__version_tuple__ = {version_tuple}\n"
