@@ -303,7 +303,7 @@ class Scene:
         return dhash(*self.layers)
 
     @staticmethod
-    def _generate_active_mask(model):
+    def is_active(model):
         # TODO: 考察是否有必要视0为非活动网格
         return model if model.dtype == bool else model != 0
 
@@ -330,13 +330,13 @@ class Scene:
             if mask is not None:
                 current_mask = mask
             else:
-                current_mask = current_layer != 0
+                current_mask = Scene.is_active(current_layer)
 
             if key not in models:
                 models[key] = current_layer
             else:
                 prev_layer = models[key]
-                filled_ind = Scene._generate_active_mask(prev_layer)
+                filled_ind = Scene.is_active(prev_layer)
                 overlapping_mask = filled_ind & current_mask
                 non_overlapping_mask = current_mask ^ overlapping_mask
 
@@ -356,7 +356,7 @@ class Scene:
 
             # place的结果应该为布尔数组或范围为[0, 1]的数组，指示对应网格位置是否有效或有效程度
             ind: np.ndarray = shape.place(mesh, worker_id)
-            mask = Scene._generate_active_mask(ind)
+            mask = Scene.is_active(ind)
 
             def model_generator():
                 for key, current_value in obj.items():
