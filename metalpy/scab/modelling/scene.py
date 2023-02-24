@@ -119,6 +119,7 @@ class Scene:
         if cache_filepath is not None and os.path.exists(cache_filepath):
             import pickle
             with open(cache_filepath, 'rb') as f:
+                # TODO: 添加额外的元信息判断来确保缓存有效？
                 models_dict = pickle.load(f)
         else:
             if executor is None:
@@ -442,7 +443,9 @@ class Scene:
         components = []
 
         for axis, x0, length in zip('xyz', origin, lengths):
-            components.append(f'{axis}({x0:.2}~{x0 + length:.2})')
+            left = f"{x0:f}".rstrip("0").rstrip(".")
+            right = f"{x0 + length:f}".rstrip("0").rstrip(".")
+            components.append(f'{axis}({left}~{right})')
 
         avg_node_size = lengths / [h.shape[0] for h in mesh.h]
         if np.all(avg_node_size - avg_node_size[0] < 1e-7):
