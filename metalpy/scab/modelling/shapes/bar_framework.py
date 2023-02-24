@@ -70,11 +70,13 @@ class BarFramework(Composition):
 
         self.outline = outline
         bars = [*self._create_bars(0), *self._create_bars(1), *self._create_bars(2)]
+
         super().__init__(
             outline,
             Composition(*bars, mix_mode=MixMode.Max),
             mix_mode=MixMode.Min
         )
+        self.bars.transforms = outline.transforms.clone()
 
     def bar_radius(self, axis):
         return self.bar_spec[axis] / 2
@@ -97,6 +99,8 @@ class BarFramework(Composition):
         ra, rb = self.bar_radius(a), self.bar_radius(b)
         c0, c1 = self.axis_span(c)
 
+        axes = axes[axes]
+
         for ax, bx in product(self.centers(a), self.centers(b)):
             origin = np.r_[ax - ra, bx - rb, c0][axes]
             end = np.r_[ax + ra, bx + rb, c1][axes]
@@ -107,4 +111,4 @@ class BarFramework(Composition):
         return self[1]
 
     def to_local_polydata(self):
-        return self.bars.to_local_polydata()
+        return self.bars.to_polydata()

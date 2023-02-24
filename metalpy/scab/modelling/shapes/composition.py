@@ -47,12 +47,12 @@ class Composition(Shape3D):
 
     @property
     def local_bounds(self):
-        return reduce(Bounds.merge, (shape.local_bounds for shape in self))
+        return reduce(Bounds.merge, (shape.bounds for shape in self))
 
     def to_local_polydata(self):
         import pyvista as pv
         ret = pv.MultiBlock()
         for shape in self:
-            ret.append(shape.to_local_polydata())
+            ret.append(shape.to_polydata())
 
         return ret

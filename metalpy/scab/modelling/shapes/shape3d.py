@@ -106,8 +106,14 @@ class Shape3D(ABC):
         ret: pv.PolyData = self.to_local_polydata()
 
         if ret is not None:
-            pts = self.transforms.transform(ret.points)
-            ret.points = pts
+            if isinstance(ret, pv.MultiBlock):
+                models = ret
+            else:
+                models = [ret]
+
+            for model in models:
+                pts = self.transforms.transform(model.points)
+                model.points = pts
 
         return ret
 
