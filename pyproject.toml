@@ -29,28 +29,37 @@ dependencies = [
     "matplotlib",
     "properties",
     "colour",
+    "loky",
 ]
 
 dynamic = ['version']
 
+[project.urls]
+Homepage = "https://github.com/yanang007/metalpy"
+
 [project.optional-dependencies]
-tests = ["pytest"]
-docs = ["sphinx"]
 scab = [
     "SimPEG >= 0.18",
     "discretize",
     "pyvista",
     "taichi >= 1.3.0",
     "pympler",
+    "pyamg",
 ]
-complete = [
-    "metalpy[scab, tests, docs]",
+complete = ["metalpy[scab]"]
+lint = [
+    "flake8",
+    "flake8-bugbearer",
+    "flake8-comprehensions",
+    "flake8-simplify",
 ]
+tests = ["pytest", "pytest-cov"]
+docs = ["sphinx"]
 dev = [
-    "metalpy[complete]",
-    "versioningit",
-    "tomli",
-    "build",
+    "metalpy[complete, tests, docs]",
+    "build", "versioningit", "tomli", "nodeenv",
+    "nox",
+    "bokeh"
 ]
 
 [tool.setuptools.packages.find]

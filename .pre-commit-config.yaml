@@ -1,28 +1,24 @@
-default_install_hook_types: [commit-msg]
+default_install_hook_types: [commit-msg, pre-commit]
 default_language_version:
     python: python3.9
 
 repos:
-  - repo: local
-    hooks:
-      - id: check-gitmoji-convention
-        name: Check gitmoji convention
-        always_run: true
-        stages: [commit-msg]
-        language: python
-        entry: python -m buildtools.git_hooks.check_gitmoji
-        additional_dependencies:
-          - .[complete]
-
+#  - repo: local
+#    hooks:
 #      - id: metalpy-lint
-#        name: Check commit message to match the gitmoji convention
+#        name: Linting
 #        always_run: true
-#        stages: [commit-msg]
+#        stages: [commit]
 #        language: python
-#        entry: nox --non-interactive --envdir .cache/dev/venv -s lint()
+#        entry: nox --non-interactive --envdir .cache/dev/venv -s lint
+
+  - repo: https://github.com/yanang007/gitmoji-lint
+    rev: '21ad5af'  # Use the sha you want to point at
+    hooks:
+    -   id: gitmoji-lint
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
 
