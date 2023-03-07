@@ -86,6 +86,13 @@ class DottedName:
         return ret
 
     @property
+    def parent(self):
+        if len(self) > 1:
+            return DottedName(*self.parts[:-1])
+        else:
+            raise ValueError('Trying to access parent of a top-level DottedName.')
+
+    @property
     def empty(self):
         return self.__len__() == 0
 
@@ -186,6 +193,17 @@ class ObjectPath:
                                  f'It looks like an instance instead of valid targets like type or function.')
             ret = ObjectPath(path=module, nested_path=nested_path)
         return ret
+
+    @property
+    def parent(self):
+        if len(self.nested_path) > 0:
+            mod = self.module if self.module is not None else self.module_name
+            if len(self.nested_path) > 1:
+                return ObjectPath(mod, self.nested_path.parent)
+            else:
+                return ObjectPath(mod)
+        else:
+            return ObjectPath(self.module_name.parent)
 
     def resolve(self):
         ret = None
@@ -351,7 +369,7 @@ def objpath(obj) -> str:
     elif isinstance(obj, str):
         ret = obj
     else:
-        warnings.warn(f'Object {type(obj).__name__} is not convertible to dotted name. Will try using str(), '
+        warnings.warn(f'Object `{type(obj).__name__}` is not convertible to dotted name. Will try using str(), '
                       f'which may lead to unexpected result.')
         ret = str(obj)
 
