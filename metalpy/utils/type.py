@@ -3,6 +3,20 @@ from __future__ import annotations
 from typing import Iterable, Callable
 
 
+class Dummy:
+    def __init__(self, name):
+        self.name = name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return isinstance(other, Dummy) and self.name == other.name
+
+
+undefined = Dummy('__undefined')
+
+
 def stringify(e):
     return [str(i) for i in e]
 
