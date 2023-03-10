@@ -15,8 +15,8 @@ def main():
         models=1
     ).with_background(1e-5)
 
-    mesh, ind_active = scene.build(cell_size=0.2, cache=True, bounds=Bounded(zmax=2))
-    grids = scene.mesh_to_polydata(mesh, ind_active)
+    model_mesh = scene.build(cell_size=0.2, cache=True, bounds=Bounded(zmax=2))
+    grids = model_mesh.to_polydata()
 
     p = pv.Plotter(shape=(1, 3))
 

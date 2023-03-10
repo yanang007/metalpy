@@ -29,7 +29,9 @@ def main():
     cell_size = 0.0332
 
     scene = Scene.of(Obj2(text, subdivide=True))
-    mesh, model = scene.build(cell_size=cell_size)
+    model_mesh = scene.build(cell_size=cell_size)
+    mesh = model_mesh.base_mesh
+    ind_active = model_mesh.active_cells
     nx, ny, nz = mesh.nCx, mesh.nCy, mesh.nCz
     colored_model_layer = np.ones(nx * ny, dtype=np.int64)
 
@@ -41,12 +43,12 @@ def main():
         colored_model_layer[start::nx - 1] = nx + i + 1
 
     colored_model = np.tile(colored_model_layer, nz)
-    colored_model[~model] = 0
+    colored_model[~ind_active] = 0
     mesh_poly = scene.mesh_to_polydata(mesh, colored_model)
 
     scene2 = Scene.of(panel, relief)
-    mesh2, model2 = scene2.build(cell_size=cell_size * 5)
-    mesh_poly2 = scene2.mesh_to_polydata(mesh2, model2)
+    model_mesh2 = scene2.build(cell_size=cell_size * 5)
+    mesh_poly2 = model_mesh2.to_polydata()
 
     pv.global_theme.transparent_background = True
     plotter = pv.Plotter(window_size=[300, 100])

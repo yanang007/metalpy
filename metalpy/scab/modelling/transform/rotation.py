@@ -8,6 +8,7 @@ class Rotation(Transform):
     def __init__(self, y, a, b, degrees=False, seq='xyz'):
         super().__init__()
         self.params = (y, a, b, degrees, seq)
+        # TODO: 解决Rotation精度问题
         self.rot = R.from_euler(seq, [y, a, b], degrees=degrees)
 
     def transform(self, mesh):

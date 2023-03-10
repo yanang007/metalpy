@@ -119,8 +119,8 @@ scene = Scene.of(
     Obj2('../obj/stl_models/mine.stl', scale=0.03).translated(1, -2, -1),
 )
 
-mesh, ind_active = scene.build(cell_size=0.2, cache=True, bounds=Bounded(zmax=2))
-grids = scene.mesh_to_polydata(mesh, ind_active)
+model_mesh = scene.build(cell_size=0.2, cache=True, bounds=Bounded(zmax=2))
+grids = model_mesh.to_polydata()
 
 import pyvista as pv
 p = pv.Plotter()
