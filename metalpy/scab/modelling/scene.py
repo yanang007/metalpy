@@ -13,6 +13,7 @@ from metalpy.scab.utils.hash import dhash_discretize_mesh
 from .layer import Layer
 from .mix_modes import MixMode
 from .object import Object
+from .modelled_mesh import ModelledMesh
 from .shapes import Shape3D
 from .shapes.bounds import Bounds
 from .shapes.full_space import FullSpace
@@ -21,6 +22,9 @@ from .shapes.shape3d import bounding_box_of
 
 class Scene:
     default_cache_dir = make_cache_directory('models')
+    INACTIVE_BOOL = False
+    INACTIVE_INT = 0
+    INACTIVE_FLOAT = np.nan
 
     def __init__(self):
         self.objects_layer = Layer()
@@ -77,7 +81,7 @@ class Scene:
                     progress=False,
                     cache=None,
                     cache_dir=None,
-                    ) -> Union[np.ndarray, dict[str, np.ndarray]]:
+                    ) -> ModelledMesh:
         """在给定网格上构建模型
 
         Parameters
@@ -142,10 +146,7 @@ class Scene:
                 with open(cache_filepath, 'wb') as f:
                     pickle.dump(models_dict, f)
 
-        if len(models_dict) == 1 and Object.DEFAULT_KEY in models_dict:
-            return models_dict[Object.DEFAULT_KEY]
-        else:
-            return models_dict
+        return ModelledMesh(mesh, models_dict)
 
     def create_mesh(self, cell_size=None, n_cells=None, bounds=None,) -> Union[TensorMesh]:
         """根据场景边界构建网格
@@ -199,7 +200,7 @@ class Scene:
     def build(self, cell_size=None, n_cells=None, bounds=None,
               executor=None, progress=False,
               cache=None, cache_dir=None,
-              ):
+              ) -> ModelledMesh:
         """根据给定的网格尺寸，构建场景的网格和模型，是create_mesh和build_model的组合
 
         Parameters
@@ -230,9 +231,9 @@ class Scene:
             Scene.build_model : 构造模型
         """
         mesh = self.create_mesh(cell_size=cell_size, n_cells=n_cells, bounds=bounds)
-        model = self.build_model(mesh, executor=executor, progress=progress, cache=cache, cache_dir=cache_dir)
+        pruned = self.build_model(mesh, executor=executor, progress=progress, cache=cache, cache_dir=cache_dir)
 
-        return mesh, model
+        return pruned
 
     @property
     def layers(self) -> Iterable[Layer]:
@@ -303,9 +304,29 @@ class Scene:
         return dhash(*self.layers)
 
     @staticmethod
+    def get_inactive_value_for_type(dtype):
+        if dtype == bool:
+            return Scene.INACTIVE_BOOL
+        elif dtype == np.issubdtype(dtype, np.integer):
+            return Scene.INACTIVE_INT
+        else:
+            return Scene.INACTIVE_FLOAT
+
+    @staticmethod
     def is_active(model):
         # TODO: 考察是否有必要视0为非活动网格
         return model if model.dtype == bool else model != 0
+
+    @staticmethod
+    def compute_active(models: Iterable[np.ndarray]):
+        ind_active = None
+        for model in models:
+            if ind_active is None:
+                ind_active = Scene.is_active(model)
+            else:
+                ind_active |= Scene.is_active(model)
+
+        return ind_active
 
     @staticmethod
     def _merge_models(models, new_models: Iterable[tuple[str, np.ndarray]], mask, mixer):
