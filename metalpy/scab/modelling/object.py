@@ -6,7 +6,7 @@ from .shapes import Shape3D
 
 
 class Object:
-    DEFAULT_KEY = '__active__'
+    DEFAULT_KEY = '__DEFAULT__'
 
     def __init__(self,
                  shape: Shape3D,
