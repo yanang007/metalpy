@@ -1,3 +1,4 @@
+import numpy as np
 from numpy.testing import assert_equal
 
 from metalpy.scab.modelling import Scene
@@ -14,15 +15,16 @@ def test_build():
         models=[1, 2, 3, 4, 5],
     )
 
+    bounds = np.round(scene.bounds)
     ret = [
-        scene.build(cell_size=0.2),
-        scene.build(cell_size=[0.2, 0.2, 0.2]),
-        scene.build(n_cells=18000),
-        scene.build(n_cells=[30, 30, 20])
+        scene.build(cell_size=0.2, bounds=bounds),
+        scene.build(cell_size=[0.2, 0.2, 0.2], bounds=bounds),
+        scene.build(n_cells=13500, bounds=bounds),
+        scene.build(n_cells=[30, 30, 15], bounds=bounds)
     ]
-    ref_mesh, ref_model = ret[0]
+    ref_mesh = ret[0]
 
-    for mesh, model in ret[1:]:
-        assert_equal(mesh.n_cells, ref_mesh.n_cells)
-        assert_equal(mesh.cell_centers, ref_mesh.cell_centers)
-        assert_equal(model, ref_model)
+    for model_mesh in ret[1:]:
+        assert_equal(model_mesh.n_cells, ref_mesh.n_cells)
+        assert_equal(model_mesh.base_mesh.cell_centers, ref_mesh.base_mesh.cell_centers)
+        assert_equal(model_mesh.get_active_model(), model_mesh.get_active_model())

@@ -25,15 +25,16 @@ def main():
         models=10
     )
 
-    mesh, model = scene.build(cell_size=0.2, cache=True)
-    Scene.mesh_to_polydata(mesh, model).threshold(1e-5).plot(
+    model_mesh = scene.build(cell_size=0.2, cache=True)
+    model_mesh.to_polydata().threshold(1e-5).plot(
         show_edges=True,
         show_grid=True
     )
     bounds = scene.bounds
     origin, end = bounds[::2], bounds[1::2]
-    active_cells = model != 0
-    active_model = model[active_cells]
+    active_cells = model_mesh.active_cells
+    active_model = model_mesh.get_activee_model()
+    mesh = model_mesh.base_mesh
 
     with simpeg_patched(Tied(max_cpu_threads=-1), Progressed()):
         source_field = define_inducing_field(50000, 45, 20)

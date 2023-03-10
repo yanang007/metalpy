@@ -20,9 +20,11 @@ def main():
     bounds = scene.bounds
     b0, b1 = bounds[::2], bounds[1::2]
     grid_size = 0.5
-    mesh, ind_active = scene.build(cell_size=grid_size)
+    model_mesh = scene.build(cell_size=grid_size)
+    mesh = model_mesh.base_mesh
+    ind_active = model_mesh.active_cells
 
-    n_active = np.count_nonzero(ind_active)
+    n_active = model_mesh.n_active_cells
     mag_susc = 1
     scalar_model = np.ones(n_active) * mag_susc
     vector_model = mkvc(np.c_[scalar_model, scalar_model * 0.5, scalar_model * 1.5])
