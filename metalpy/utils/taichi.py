@@ -1,6 +1,7 @@
 import copy
 import functools
 import os
+import warnings
 from typing import Sized
 
 import taichi as ti
@@ -321,3 +322,48 @@ def ti_index(i, j, stype: ti.template(), struct_size, array_size):
         return i * struct_size + j  # [x, y, z, x, y, z, ..., x, y, z]
     else:
         return j * array_size + i  # [x, x, ..., x, y, y, ..., y, z, z, ..., z]
+
+
+def wrappable_for_ti_func(annotator):
+    @functools.wraps(annotator)
+    def wrapper(actual_func):
+        # 用于处理ti.func或ti.kernel包装的函数
+        # 这两类包装主要将实际功能函数添加到函数对象的__dict__中供调用
+        if getattr(actual_func, '_is_taichi_function', False):
+            setattr(actual_func, 'func', annotator(getattr(actual_func, 'func')))
+            return actual_func
+        elif getattr(actual_func, '_is_wrapped_kernel', False):
+            setattr(actual_func, '_primal', annotator(getattr(actual_func, '_primal')))
+            setattr(actual_func, '_adjoint', annotator(getattr(actual_func, '_adjoint')))
+            return actual_func
+
+        return annotator(actual_func)
+
+    return wrapper
+
+
+def check_contiguous(arr):
+    typename = type(arr).__name__
+    if typename == 'ndarray':
+        import numpy as np
+        if not arr.flags.contiguous:
+            warnings.warn('Uncontiguous array detected.'
+                          ' Copying to contiguous memory,'
+                          ' which will consume extra memory.',
+                          stacklevel=3)
+            return np.ascontiguousarray(arr)
+    else:
+        # TODO: Torch、Paddle之类也可以检查？
+        pass
+
+    return arr
+
+
+@wrappable_for_ti_func
+def ensure_contiguous(func):
+    def wrapper(*args, **kwargs):
+        args = tuple(check_contiguous(arg) for arg in args)
+        kwargs = {k: check_contiguous(v) for k, v in kwargs.items()}
+        func(*args, **kwargs)
+
+    return wrapper

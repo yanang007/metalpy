@@ -5,7 +5,7 @@ import numpy as np
 import taichi as ti
 import tqdm
 
-from metalpy.utils.taichi import ti_kernel, ti_cfg, ti_ndarray, ti_func, ti_data_oriented, ti_index
+from metalpy.utils.taichi import ti_kernel, ti_cfg, ti_ndarray, ti_func, ti_data_oriented, ti_index, ensure_contiguous
 from metalpy.utils.type import ensure_as_iterable, not_none_or_default
 
 from ...value_observer import ValueObserver
@@ -219,6 +219,7 @@ class TaichiSimulation3DIntegral:
 
         return ret
 
+    @ensure_contiguous
     @ti_kernel
     def _kernel_matrix_forward(
             self,
