@@ -4,6 +4,7 @@ from scipy.stats import linregress
 
 from metalpy.scab.modelling.shapes.cuboid import is_inside_cuboid
 from metalpy.utils.dhash import dhash
+from metalpy.utils.ear_clip import ear_clip
 from . import Shape3D
 from .bounds import Bounds
 
@@ -58,16 +59,23 @@ class Edge:
 
 
 class Prism(Shape3D):
-    def __init__(self, pts, z0, z1):
-        """
-        :param pts: 底面多边形顶点列表
-        :param z0: 底面高度
-        :param z1: 顶面高度
+    def __init__(self, pts, z0, z1, verbose=True):
+        """定义任意底面棱锥
+
+        Parameters
+        ----------
+        pts
+            底面多边形顶点列表
+        z0, z1
+            底面和顶面高度
+        verbose
+            是否输出辅助信息（主要为顶点数较多时导出PyVista模型会触发进度条）
         """
         super().__init__()
         self.pts = np.asarray(pts)
         self.z0 = min(z0, z1)
         self.z1 = max(z0, z1)
+        self.verbose = verbose
 
     def do_place(self, mesh_cell_centers, worker_id):
         # 优化: 只判断在xyz三轴边界框内的点
@@ -116,6 +124,9 @@ class Prism(Shape3D):
             np.r_[self.pts.max(axis=0), self.z1]
         ].ravel())
 
+    def triangulated_vertices(self):
+        return ear_clip(self.pts, verbose=self.verbose)
+
     def to_local_polydata(self):
         import pyvista as pv
 
@@ -128,11 +139,15 @@ class Prism(Shape3D):
         vertices = np.c_[vh, vz]
         indices = np.arange(0, n_vertices, 1).reshape([-1, 2]).T
 
-        top_face = np.r_[n_pts, np.arange(0, n_vertices, 2)]  # 上顶面
-        bottom_face = np.r_[n_pts, np.arange(1, n_vertices, 2)]  # 下底面
+        faces = self.triangulated_vertices()
+        top_face = np.c_[np.repeat(3, faces.shape[0]), faces * 2].ravel()  # 上顶面
+        bottom_face = np.c_[np.repeat(3, faces.shape[0]), faces * 2 + 1].ravel()  # 下底面
         edge_counts = np.ones(n_pts, dtype=np.integer) * 4
-        side_faces = np.c_[edge_counts, indices[0], indices[1], np.roll(indices[1], -1), np.roll(indices[0], -1)]\
-            .ravel()
+        side_faces = np.c_[
+            edge_counts,
+            indices[0], indices[1],
+            np.roll(indices[1], -1), np.roll(indices[0], -1)
+        ].ravel()
 
         faces = np.r_[top_face, bottom_face, side_faces]
 
