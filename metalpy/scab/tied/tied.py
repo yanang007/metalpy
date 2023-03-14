@@ -4,7 +4,6 @@ from SimPEG.simulation import BaseSimulation
 
 from metalpy.mexin import Mixin
 from metalpy.mexin import Patch
-from metalpy.utils.taichi import ti_prepare, ti_arch, ti_reset
 from metalpy.utils.type import get_params_dict
 
 from metalpy.utils.object_path import get_full_qualified_path
@@ -27,6 +26,8 @@ class TaichiContext(Mixin):
         max_cpu_threads
             cpu arch下的最大线程数，taichi默认为cpu核心数
         """
+        from metalpy.utils.taichi import ti_prepare, ti_arch
+
         super().__init__(this)
         params = {}
         if arch is not None:
@@ -53,6 +54,8 @@ class TaichiContext(Mixin):
 
 class Tied(Patch, Distributable):
     def __init__(self, arch=None, max_cpu_threads=None, **kwargs):
+        from metalpy.utils.taichi import ti_reset
+
         super().__init__()
         ti_reset()
         self.params = get_params_dict(arch=arch, max_cpu_threads=max_cpu_threads, **kwargs)
