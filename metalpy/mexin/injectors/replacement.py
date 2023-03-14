@@ -1,4 +1,6 @@
-from metalpy.utils.object_path import reassign_object_name, reassign_object_module, mock_object
+import functools
+
+from metalpy.utils.object_path import reassign_object_name, reassign_object_module
 
 
 def create_replacement(func, orig, executor, qualname=None, module_name=None):
@@ -21,7 +23,7 @@ def create_replacement(func, orig, executor, qualname=None, module_name=None):
         if module_name is not None:
             reassign_object_module(ret, module_name)
     else:
-        mock_object(ret, orig)
+        functools.wraps(orig)(ret)
 
     return ret
 

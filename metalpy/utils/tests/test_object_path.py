@@ -1,3 +1,5 @@
+import functools
+
 from metalpy.utils.object_path import get_full_qualified_path, reassign_object_name, mock_object
 
 
@@ -24,5 +26,5 @@ def test_full_qualname():
     assert get_full_qualified_path(XX.YY.zz) == f'{__name__}:XX.YY.ZZ'
 
     mock = XX()
-    mock_object(mock, Target)
+    functools.wraps(Target)(mock)
     assert get_full_qualified_path(mock) == get_full_qualified_path(Target)

@@ -526,22 +526,6 @@ def reassign_object_module(obj, new_module: objpath_like):
     obj.__module__ = objpath(new_module)
 
 
-def mock_object(obj, obj_to_be_mocked):
-    """修改obj的__module__，__name__和__qualname__属性，使之在ObjectPath的视角中和obj_to_be_mocked一样
-
-    Parameters
-    ----------
-    obj
-        需要进行伪装的对象
-    obj_to_be_mocked
-        目标对象
-    """
-    for prop in ['__module__', '__name__', '__qualname__']:
-        val = getattr(obj_to_be_mocked, prop, None)
-        if val is not None:
-            setattr(obj, prop, val)
-
-
 def get_nest_prefix_by_qualname(obj) -> str:
     """通过解析__qualname__提取对象在模块中的嵌套路径，如果是模块下直接定义的对象，则返回空字符串
 
